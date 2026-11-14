@@ -1,0 +1,60 @@
+name: Converta auto-merge after CI
+
+on:
+  workflow_run:
+    workflows: ["Converta CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+concurrency:
+  group: ci-auto-merge-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  merge-after-ci:
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify every configured CI workflow passed for this exact PR commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+          HEAD_SHA: ${{ github.event.workflow_run.pull_requests[0].head.sha || github.event.workflow_run.head_sha }}
+          REQUIRED_WORKFLOWS: '["Converta CI"]'
+        run: |
+          set -euo pipefail
+          if [[ -z "$PR_NUMBER" || -z "$HEAD_SHA" ]]; then
+            echo "No pull-request metadata was attached to this CI run; nothing to merge."
+            exit 0
+          fi
+          PR_JSON="$(gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}")"
+          if [[ "$(jq -r '.state' <<< "$PR_JSON")" != "open" || "$(jq -r '.draft' <<< "$PR_JSON")" != "false" || "$(jq -r '.head.sha' <<< "$PR_JSON")" != "$HEAD_SHA" || "$(jq -r '.head.repo.full_name // empty' <<< "$PR_JSON")" != "$REPOSITORY" || "$(jq -r '.base.ref' <<< "$PR_JSON")" != "main" ]]; then
+            echo "The pull request is no longer the same open, non-draft, same-repository PR targeting main."
+            exit 0
+          fi
+          RUNS_JSON="$(gh api "repos/${REPOSITORY}/actions/runs?head_sha=${HEAD_SHA}&event=pull_request&per_page=100")"
+          while IFS= read -r REQUIRED_NAME; do
+            [[ -z "$REQUIRED_NAME" ]] && continue
+            MATCH="$(jq -c --arg name "$REQUIRED_NAME" '[.workflow_runs[] | select(.name == $name)] | sort_by(.run_started_at // .created_at) | last // null' <<< "$RUNS_JSON")"
+            if [[ "$MATCH" == "null" ]]; then
+              echo "Waiting: no run found for required workflow $REQUIRED_NAME on $HEAD_SHA."
+              exit 0
+            fi
+            STATUS="$(jq -r '.status' <<< "$MATCH")"
+            CONCLUSION="$(jq -r '.conclusion // empty' <<< "$MATCH")"
+            if [[ "$STATUS" != "completed" || "$CONCLUSION" != "success" ]]; then
+              echo "Not merging: $REQUIRED_NAME status=$STATUS conclusion=$CONCLUSION."
+              exit 0
+            fi
+          done < <(jq -r '.[]' <<< "$REQUIRED_WORKFLOWS")
+          echo "All required CI workflows passed for ${HEAD_SHA}. Merging PR #${PR_NUMBER}."
+          gh pr merge "$PR_NUMBER" --squash --delete-branch --repo "$REPOSITORY"
