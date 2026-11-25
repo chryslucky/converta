@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AudioPlayerModal from './AudioPlayerModal.jsx';
+import RecentMediaShelf from './RecentMediaShelf.jsx';
 import { detectVideoExportFormats, renderLyricVideoFile } from './lyric-video-export.js';
 import {
   Activity, AudioLines, AudioWaveform, Check, ChevronDown, CircleHelp, Clapperboard,
@@ -88,7 +89,7 @@ export default function AudioStudio() {
   const [voiceovers,setVoiceovers] = useState([]);
   const [sourceBuffer,setSourceBuffer] = useState(null);
   const [sourceLoading,setSourceLoading] = useState(false);
-  const [settings,setSettings] = useState({trimStart:0,trimEnd:0,cutStart:null,cutEnd:null,fadeIn:0,fadeOut:0,gain:100,speed:1,pitch:0,bass:0,treble:0,highpass:0,lowpass:0,distortion:0,echo:0,reverb:0,chorus:0,normalize:false,reverse:false,removeSilence:false,mono:false,compress:true,gateDb:-42});
+  const [settings,setSettings] = useState({trimStart:0,trimEnd:0,cutStart:null,cutEnd:null,fadeIn:0,fadeOut:0,gain:100,speed:1,pitch:0,bass:0,treble:0,highpass:0,lowpass:0,distortion:0,echo:0,reverb:0,chorus:0,normalize:false,reverse:false,removeSilence:false,mono:false,compress:false,gateDb:-42});
   const [voiceIndex,setVoiceIndex] = useState(0);
   const [notice,setNotice] = useState('');
   const [error,setError] = useState('');
@@ -159,6 +160,24 @@ export default function AudioStudio() {
     if (!sourceBuffer || busy) return;
     setBusy(true); setError(''); setNotice('');
     try {
+      const presetIsNatural = Object.keys(activePreset.settings || {}).length === 0;
+      const sourceIsUnchanged = Math.abs(Number(settings.trimStart) || 0) < 0.0001
+        && Math.abs((Number(settings.trimEnd) || sourceBuffer.duration) - sourceBuffer.duration) < 0.0001
+        && settings.cutStart == null && settings.cutEnd == null
+        && !settings.fadeIn && !settings.fadeOut
+        && Number(settings.gain) === 100 && Number(settings.speed) === 1 && Number(settings.pitch) === 0
+        && Number(settings.bass) === 0 && Number(settings.treble) === 0
+        && Number(settings.highpass) === 0 && Number(settings.lowpass) === 0
+        && Number(settings.distortion) === 0 && Number(settings.echo) === 0
+        && Number(settings.reverb) === 0 && Number(settings.chorus) === 0
+        && !settings.normalize && !settings.reverse && !settings.removeSilence
+        && !settings.mono && !settings.compress;
+      if (sourceIsUnchanged && presetIsNatural && !voiceovers.length) {
+        setPreviewBlob(selectedTrack.file);
+        setOutputName(selectedTrack.name);
+        setNotice('No processing was requested. The original source bytes are kept unchanged for preview and download.');
+        return;
+      }
       const processed=await processAudioBuffer(sourceBuffer,{...settings,voicePreset:activePreset.settings});
       let finalBuffer=processed;
       if (voiceovers.length) {
@@ -379,6 +398,12 @@ export default function AudioStudio() {
           </article>)}
           {!tracks.length&&<div className="audio-empty"><Headphones/><b>No clips yet</b><span>Import one or more audio files to begin.</span></div>}
         </div>
+        <RecentMediaShelf
+          title="Recently converted media"
+          actionLabel="Add to editor"
+          onImport={(file)=>importTracks([file])}
+          limit={4}
+        />
         <div className="audio-library-actions">
           <button onClick={()=>buildMix(true)} disabled={!selectedMix.length||busy}>Merge in order</button>
           <button onClick={()=>buildMix(false)} disabled={!selectedMix.length||busy}>Combine / overlay</button>
@@ -387,7 +412,7 @@ export default function AudioStudio() {
       </section>
 
       {tab==='editor'&&<section className="audio-panel audio-controls-panel">
-        <div className="audio-panel-heading"><div><small>02 · NON-DESTRUCTIVE CONTROLS</small><h2>Precision audio editor</h2></div><button className="audio-reset" onClick={()=>setSettings({trimStart:0,trimEnd:activeDuration,cutStart:null,cutEnd:null,fadeIn:0,fadeOut:0,gain:100,speed:1,pitch:0,bass:0,treble:0,highpass:0,lowpass:0,distortion:0,echo:0,reverb:0,chorus:0,normalize:false,reverse:false,removeSilence:false,mono:false,compress:true,gateDb:-42})}><RotateCcw/> Reset</button></div>
+        <div className="audio-panel-heading"><div><small>02 · NON-DESTRUCTIVE CONTROLS</small><h2>Precision audio editor</h2></div><button className="audio-reset" onClick={()=>setSettings({trimStart:0,trimEnd:activeDuration,cutStart:null,cutEnd:null,fadeIn:0,fadeOut:0,gain:100,speed:1,pitch:0,bass:0,treble:0,highpass:0,lowpass:0,distortion:0,echo:0,reverb:0,chorus:0,normalize:false,reverse:false,removeSilence:false,mono:false,compress:false,gateDb:-42})}><RotateCcw/> Reset</button></div>
         {sourceLoading&&<div className="audio-loading"><span/> Decoding source audio…</div>}
         {!sourceBuffer&&!sourceLoading&&<div className="audio-empty large"><AudioLines/><b>Choose an audio clip</b><span>Upload a source in the library to open its editing controls.</span></div>}
         {sourceBuffer&&<>
@@ -470,6 +495,12 @@ export default function AudioStudio() {
         <div className="audio-panel lyrics-source-panel">
           <div className="audio-panel-heading"><div><small>01 · SOUNDTRACK</small><h2>Choose your song</h2></div><AudioLines/></div>
           <label className="audio-upload-button"><Upload/><span>{lyricsFile?lyricsFile.name:'Upload song or audio file'}</span><input type="file" accept="audio/*,.flac,.m4a,.webm" onChange={(e)=>importLyricsAudio(e.target.files?.[0])}/></label>
+          <RecentMediaShelf
+            title="Reuse a converted soundtrack"
+            actionLabel="Use soundtrack"
+            onImport={(file)=>importLyricsAudio(file)}
+            limit={4}
+          />
           {lyricsAudioURL&&<AudioPlayerModal src={lyricsAudioURL} title={lyricsFile?.name||'Song soundtrack'} subtitle="LYRIC VIDEO SOUNDTRACK" buttonLabel="Open song player" onTimeUpdate={setCurrentTime}/>} 
           <div className="lyrics-time-display"><span>PLAYHEAD</span><b>{seconds(currentTime)}</b></div>
           <div className="lyrics-images-header"><div><b>Background image library</b><small>Upload up to 10 still images</small></div><label className="image-add-button"><ImagePlus/><input type="file" accept="image/*" multiple onChange={(e)=>{importImages(e.target.files);e.target.value='';}}/> Add images</label></div>

@@ -7,7 +7,9 @@ test('builds a complete MP3 conversion argument list with selected audio setting
   assert.deepEqual(args, ['-y', '-i', null, '-map', '0:a:0', '-vn', '-map_metadata', '0', '-ar', '48000', '-c:a', 'libmp3lame', '-b:a', '320k', null]);
 });
 
-test('does not apply a lossy bitrate to WAV and FLAC', () => {
+test('uses floating-point WAV and lossless FLAC without a lossy bitrate', () => {
+  assert.ok(buildOutputArguments({ format: 'wav' }).includes('pcm_f32le'));
+  assert.ok(buildOutputArguments({ format: 'flac' }).includes('flac'));
   assert.ok(!buildOutputArguments({ format: 'wav' }).includes('-b:a'));
   assert.ok(!buildOutputArguments({ format: 'flac' }).includes('-b:a'));
 });

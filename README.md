@@ -1,15 +1,15 @@
-# Converta Studio 5.0
+# Converta Studio 5.1
 
 Converta is a browser-based media workspace for audio conversion, sound editing, voice effects, voiceover mixing and lyric-video production.
 
 **Production:** https://convertapro.vercel.app/  
 **Repository:** https://github.com/chryslucky/converta
 
-## Studio 5.0
+## Studio 5.1
 
 - Convert audio and extract audio tracks from supported video containers to MP3, WAV, FLAC, AAC and OGG.
-- Play completed conversion outputs in the queue and history, and download the saved file.
-- Edit audio locally: trim, remove a range, split, duplicate, reverse, concatenate, overlay-mix, fade, normalize, remove quiet sections, adjust gain, change playback rate and pitch, EQ bass/treble, high-pass and low-pass filter, compress, distort, and add echo, reverb and chorus.
+- Play completed conversion outputs in the queue and history, download the saved file, or re-import recent exports directly into the main converter, Audio Studio and lyric-video soundtrack workflow.
+- Edit audio locally: trim, remove a range, split, duplicate, reverse, concatenate, overlay-mix, fade, normalize, remove quiet sections, adjust gain, change playback rate and pitch, EQ bass/treble, high-pass and low-pass filter, compress, distort, and add echo, reverb and chorus. WAV edits export as 32-bit float PCM with the original channel count; untouched source files can be previewed and downloaded byte-for-byte.
 - Apply 33 creative voice-processing profiles, including lower and brighter adult presets, child-like pitch, robot, radio, telephone, announcer, monster, alien and other effects.
 - Import or record voiceovers, set each track's start offset and level, and mix tracks with a selected audio source.
 - Create lyric videos from songs with individually timed caption segments, 32 font-family choices, solid text color or animated linear gradients, 30 animated background presets, up to 10 uploaded image backgrounds and 120 parameterized text-animation presets.
@@ -18,7 +18,7 @@ Converta is a browser-based media workspace for audio conversion, sound editing,
 
 ## Processing model and limits
 
-FFmpeg WebAssembly performs the primary audio conversions inside the browser. Audio Studio uses the Web Audio API for editing and WAV export. Lyric videos are rendered frame-by-frame from the composition canvas and muxed with the soundtrack by Mediabunny using WebCodecs.
+FFmpeg WebAssembly performs the primary audio conversions inside the browser. New workspaces default to lossless FLAC; WAV conversion uses 32-bit float PCM. Audio Studio uses the Web Audio API for editing and float-WAV export. Lossy formats (MP3, AAC and OGG) remain lossy by definition, and conversion cannot restore information absent from the source. Lyric videos are rendered frame-by-frame from the composition canvas and muxed with the soundtrack by Mediabunny using WebCodecs.
 
 Audio Studio's voice presets are creative DSP effects, not neural voice cloning or natural gender conversion. Pitch changes currently use playback-rate processing, so they also change duration. Edited-audio exports are PCM WAV. Lyric video export defaults to MP4 (H.264 + AAC) when compatible encoders are available, and offers MOV, WebM, MKV and MPEG-TS based on device/browser codec support. AAC encoding is supplied by the open-source Mediabunny AAC encoder extension when native WebCodecs AAC is unavailable. If MP4/H.264 is not supported, the editor selects the first compatible alternative.
 
