@@ -1,79 +1,57 @@
-# Converta Studio 4.0
+# Converta Studio 5.0
 
-A private, browser-based media conversion workspace for audio conversion and audio extraction from supported video containers. FFmpeg WebAssembly processes selected media in the browser; the project does not include a media-upload or server-side conversion API.
+Converta is a browser-based media workspace for audio conversion, sound editing, voice effects, voiceover mixing and lyric-video production.
 
-Production site: https://convertapro.vercel.app/  
-Alternative Vercel deployment: https://convertapro-three.vercel.app/  
-GitHub Pages: https://chryslucky.github.io/converta/  
-Repository: https://github.com/chryslucky/converta
+**Production:** https://convertapro.vercel.app/  
+**Repository:** https://github.com/chryslucky/converta
 
-## Version 4.0
+## Studio 5.0
 
-- Clean browser-history routes with no hash fragments.
-- Route-specific browser titles, descriptions, canonical URLs, Open Graph metadata and JSON-LD.
-- Build-time pre-rendered documents for the home page, conversion landing pages, format guides and about page.
-- XML sitemap and robots.txt generated during production build; the private history route is marked noindex.
-- A searchable in-app discovery index with more than 1,000 natural conversion query phrases and at least 2,000 searchable query terms. This index powers converter search suggestions rather than injecting keyword lists into page content.
-- Batch conversion with per-file progress and an overall progress indicator.
-- Dated records for completed, failed and cancelled conversion attempts, plus file additions, job starts, downloads and other workspace activity.
-- Local export storage in IndexedDB and preferences/history metadata in browser storage.
-- Modern Lucide icons across the studio, workspace navigation, format controls, guides and history.
+- Convert audio and extract audio tracks from supported video containers to MP3, WAV, FLAC, AAC and OGG.
+- Play completed conversion outputs in the queue and history, and download the saved file.
+- Edit audio locally: trim, remove a range, split, duplicate, reverse, concatenate, overlay-mix, fade, normalize, remove quiet sections, adjust gain, change playback rate and pitch, EQ bass/treble, high-pass and low-pass filter, compress, distort, and add echo, reverb and chorus.
+- Apply 32 creative voice-processing profiles, including lower and brighter adult presets, child-like pitch, robot, radio, telephone, announcer, monster, alien and other effects.
+- Import or record voiceovers, set each track's start offset and level, and mix tracks with a selected audio source.
+- Create lyric videos from songs with individually timed caption segments, 32 font-family choices, solid text color or animated linear gradients, 30 animated background presets, up to 10 uploaded image backgrounds and 120 parameterized text-animation presets.
+- Preview edited audio in an audio player and lyric videos in a video player before download.
+- Keep conversion history and exports locally in the browser.
 
-## Conversion features
+## Processing model and limits
 
-Converta exports audio as MP3, WAV, FLAC, AAC and OGG. Common supported video containers can be used as sources when they contain a decodable audio stream; the output is audio only. The current video workflow selects the first audio stream and does not edit or re-encode the video track.
+FFmpeg WebAssembly performs the primary format conversions inside the browser. Audio Studio uses Web Audio API decoding, offline processing and WAV encoding; lyric videos are recorded from a canvas and soundtrack with the browser's MediaRecorder API.
 
-For lossy formats MP3, AAC and OGG, the workspace offers bitrate controls. WAV and FLAC use their respective PCM/lossless output profiles. A 300 MB per-file application limit helps reduce browser memory pressure. Actual decoding support depends on the source codec and the bundled FFmpeg build.
+Audio Studio's voice presets are creative DSP effects, not neural voice cloning or natural gender conversion. Pitch changes currently use playback-rate processing, so they also change duration. Audio Studio edited-audio exports are PCM WAV. Lyric video output is WebM where supported, or MP4 only when the browser exposes a compatible MediaRecorder implementation. Current browser codec support may vary.
 
-## Privacy and local storage
+No media-upload or server-side conversion API is included. Your source files remain in the browser. Export blobs and history are stored locally; browser cleanup, private-browsing policies or storage quota limits can remove them. Download important work to your device. Keep the tab active while a lyric video renders.
 
-Source files are processed in the browser with FFmpeg WebAssembly. Converta does not include an account system, cloud sync or server-side media conversion endpoint. Completed output blobs are saved in IndexedDB, while conversion and activity records are persisted locally in browser storage.
+The primary converter retains a 300 MB per-file application limit to reduce browser memory pressure. Actual decoding depends on source codecs and available device memory.
 
-Browser cleanup, private-browsing policies, storage quotas or clearing site data may remove local records and output files. Download important exports to a normal device folder. Local browser history is not a backup.
+## Development
 
-## SEO architecture
+Requirements: Node.js 20.19+ (Node 22 recommended).
 
-The build creates individual HTML documents for a curated set of converter and guide routes so each public page has meaningful static text before client-side JavaScript runs. The app also updates page titles and metadata during browser navigation. The sitemap contains only public, indexable pages; personal conversion history is excluded.
+```bash
+npm install
+npm run dev
+npm test
+npm run build
+npm run check
+```
 
-The generated search corpus provides long-tail converter query suggestions in the product UI. It is not rendered as hidden page text. Public landing pages and guides contain task-specific instructions, codec limitations and FAQs rather than repeated keyword blocks.
+The build copies the FFmpeg WebAssembly runtime, generates the search index, creates the Vite production build and prerenders route-specific SEO pages, sitemap.xml and robots.txt.
 
-## Local development
+## Structure
 
-Requirements: Node.js 20.19+ (or 22.12+) and npm.
+- `src/App.jsx` — conversion workspace, history, routing and SEO metadata
+- `src/AudioStudio.jsx` — audio editor, voice lab, voiceovers and lyric-video UI
+- `src/audio-tools.js` — Web Audio decoding, processing, mixing and WAV export
+- `src/audio-studio.css` — responsive Audio Studio design system
+- `src/conversion.js` and `src/engine.js` — FFmpeg output profiles and conversion lifecycle
+- `src/storage.js` — IndexedDB output storage
+- `src/data/seo-pages.js` — crawlable public landing-page content
 
-    npm install
-    npm run dev
-    npm test
-    npm run build
-    npm run check
+## Deployment
 
-The prebuild lifecycle copies the FFmpeg runtime into public/ffmpeg/ and generates the search index. The build then generates route-specific HTML documents, sitemap.xml and robots.txt.
-
-## Deployment targets
-
-- Vercel serves the application at the domain root /.
-- GitHub Pages serves the repository site beneath /converta/.
-- Vercel uses BrowserRouter and vercel.json rewrites for direct path requests. Pre-rendered route documents provide route-specific HTML metadata and content to crawlers.
-- GitHub Pages uses its repository subpath and the static route documents generated at build time.
-
-The GitHub Actions workflows run CI and publish GitHub Pages from main. The repository Pages source must be set to GitHub Actions in Settings → Pages before the first Pages deployment.
-
-## Core structure
-
-    src/
-      App.jsx                   Workspace, history, search and SEO routes
-      conversion.js             Output profiles and media helpers
-      engine.js                 FFmpeg WebAssembly conversion lifecycle
-      main.jsx                  React entry point with BrowserRouter
-      store.js                  Local settings, job history and activity state
-      storage.js                IndexedDB output file storage
-      styles.css                Responsive v4 design system
-      data/seo-pages.js         Public landing pages, guides and route metadata
-    scripts/
-      copy-ffmpeg.mjs            Copies FFmpeg runtime into the static build
-      generate-search-index.mjs  Generates long-tail search suggestions
-      prerender-seo.mjs          Writes crawlable HTML, sitemap and robots files
-
-## Licensing
+The production project is deployed from the `main` branch on Vercel at https://convertapro.vercel.app/. GitHub Pages is also configured for https://chryslucky.github.io/converta/ with its repository path base.
 
 No project-wide license has been added. Review upstream licenses for FFmpeg and npm dependencies before redistributing modified builds.

@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import AudioStudio from './AudioStudio.jsx';
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
   Activity, ArrowDownToLine, ArrowRight, AudioLines, AudioWaveform, BadgeCheck, BookOpen,
@@ -46,6 +47,26 @@ function fileIsVideo(file) {
 function fileExtension(name) {
   return (name || '').split('.').pop()?.toUpperCase() || 'FILE';
 }
+
+function StoredOutputPreview({ resultId, outputName }) {
+  const [url,setUrl] = useState('');
+  const [status,setStatus] = useState('Loading playable preview…');
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+    readOutput(resultId).then((blob) => {
+      if (!active) return;
+      if (!blob) { setStatus('Preview unavailable; download the saved file again.'); return; }
+      objectUrl = URL.createObjectURL(blob);
+      setUrl(objectUrl);
+      setStatus('');
+    }).catch(() => { if (active) setStatus('Could not load this local preview.'); });
+    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  },[resultId]);
+  return <div className="queue-preview-wrap">
+    {url ? <audio className="queue-audio-preview" controls preload="none" src={url} aria-label={'Play '+outputName} /> : <small>{status}</small>}
+  </div>;
+}
 function record(action, detail = {}) {
   useStudio.getState().recordActivity({ action, ...detail, date: new Date().toISOString() });
 }
@@ -53,8 +74,9 @@ function usePageSEO() {
   const location = useLocation();
   useEffect(() => {
     const page = getSeoPage(location.pathname);
-    const title = page?.title || 'Page not found | Converta';
-    const description = page?.description || 'The requested Converta page could not be found.';
+    const isAudioStudio = location.pathname === '/audio-studio/';
+    const title = isAudioStudio ? 'Audio Editor, Voice Effects & Lyrics Video Maker | Converta' : page?.title || 'Page not found | Converta';
+    const description = isAudioStudio ? 'Edit audio, trim and mix clips, transform voice tones, record voiceovers and create timed lyric videos with animated text and backgrounds.' : page?.description || 'The requested Converta page could not be found.';
     const canonical = SITE_URL + (location.pathname.endsWith('/') ? location.pathname : location.pathname + '/');
     document.title = title;
     const setMeta = (selector, attributes) => {
@@ -98,6 +120,7 @@ function Sidebar() {
     <div className="sidebar-section">
       <p className="sidebar-label">EXPLORE</p>
       <nav className="side-nav" aria-label="Information navigation">
+        <NavLink to="/audio-studio/"><AudioWaveform />Audio Studio 5.0</NavLink>
         <NavLink to="/audio-converter/"><AudioLines />Audio converter</NavLink>
         <NavLink to="/video-to-audio/"><FileVideo2 />Video to audio</NavLink>
         <NavLink to="/guides/"><BookOpen />Guides</NavLink>
@@ -111,7 +134,7 @@ function Sidebar() {
       <p>Source media is processed in this browser. Your files are not uploaded to a conversion server.</p>
       <span className="privacy-status"><i /> LOCAL ENGINE</span>
     </div>
-    <div className="sidebar-bottom"><span>CONVERTA STUDIO</span><b>VERSION 4.0</b></div>
+    <div className="sidebar-bottom"><span>CONVERTA STUDIO</span><b>VERSION 5.0</b></div>
   </aside>;
 }
 function LayersIcon() { return <Command />; }
@@ -172,6 +195,7 @@ function Topbar() {
     {menuOpen && <nav className="mobile-menu-panel">
       <NavLink to="/" onClick={() => setMenuOpen(false)}>Studio</NavLink>
       <NavLink to="/history/" onClick={() => setMenuOpen(false)}>History</NavLink>
+      <NavLink to="/audio-studio/" onClick={() => setMenuOpen(false)}>Audio Studio 5.0</NavLink>
       <NavLink to="/audio-converter/" onClick={() => setMenuOpen(false)}>Audio converter</NavLink>
       <NavLink to="/video-to-audio/" onClick={() => setMenuOpen(false)}>Video to audio</NavLink>
       <NavLink to="/guides/" onClick={() => setMenuOpen(false)}>Guides</NavLink>
@@ -182,7 +206,7 @@ function Topbar() {
 function Footer() {
   return <footer className="site-footer">
     <div className="footer-brand"><Brand /><p>Private media conversion, built for a better workflow.</p></div>
-    <div className="footer-links"><Link to="/audio-converter/">Audio converter</Link><Link to="/video-to-audio/">Video to audio</Link><Link to="/guides/">Guides</Link><Link to="/about/">About</Link><Link to="/history/">History</Link></div>
+    <div className="footer-links"><Link to="/audio-studio/">Audio Studio 5.0</Link><Link to="/audio-converter/">Audio converter</Link><Link to="/video-to-audio/">Video to audio</Link><Link to="/guides/">Guides</Link><Link to="/about/">About</Link><Link to="/history/">History</Link></div>
     <div className="footer-bottom"><span>© {new Date().getFullYear()} Converta Studio</span><span><LockKeyhole /> Your files remain on this device</span><a href="https://github.com/chryslucky/converta" target="_blank" rel="noreferrer">Source code <ArrowRight /></a></div>
   </footer>;
 }
@@ -197,6 +221,7 @@ function Layout() {
         <Routes>
           <Route path="/" element={<Studio />} />
           <Route path="/history/" element={<HistoryPage />} />
+          <Route path="/audio-studio/" element={<AudioStudio />} />
           <Route path="/about/" element={<SEOContentPage page={getSeoPage('/about/')} />} />
           <Route path="/guides/" element={<GuidesIndex />} />
           <Route path="/:slug/" element={<DynamicSeoRoute />} />
@@ -347,7 +372,7 @@ function Studio() {
   return <>
     <section className="hero-panel">
       <div className="hero-copy">
-        <Eyebrow>PRIVATE MEDIA WORKSPACE · V4.0</Eyebrow>
+        <Eyebrow>PRIVATE MEDIA WORKSPACE · V5.0</Eyebrow>
         <h1>Make your media<br /><em>work better.</em></h1>
         <p>Convert audio and extract sound from video with a private, focused studio that runs on your device.</p>
         <div className="hero-points"><span><ShieldCheck /> Local processing</span><span><Gauge /> Live progress</span><span><HistoryIcon /> Dated history</span></div>
@@ -411,7 +436,7 @@ function Studio() {
             <div className="file-meta"><span>{formatBytes(file.size)}</span><i /> <span className={'status-text ' + file.status}>{file.status === 'ready' ? 'Waiting' : file.status === 'done' ? 'Completed' : file.status === 'error' ? 'Failed' : file.status === 'cancelled' ? 'Cancelled' : 'Converting'}</span></div>
             {file.status === 'converting' && <div className="file-progress"><span style={{width:file.progress + '%'}} /></div>}
             {file.status === 'error' && <p className="file-error">{file.error}</p>}
-            {file.status === 'done' && <div className="file-success"><CheckCircle2 /> Saved as {file.outputName}</div>}
+            {file.status === 'done' && <><div className="file-success"><CheckCircle2 /> Saved as {file.outputName}</div><StoredOutputPreview resultId={file.resultId} outputName={file.outputName} /></>}
           </div>
           <div className="queue-actions">{file.status === 'done' && <button onClick={() => downloadResult(file)} aria-label={'Download ' + file.outputName}><Download /></button>}<button onClick={() => {record('File removed from queue',{fileName:file.name,fileSize:file.size,status:'removed'});state.removeFile(file.id);}} disabled={state.activeId === file.id} aria-label={'Remove ' + file.name}><X /></button></div>
         </article>)}</div> : <div className="queue-empty"><FolderOpen /><b>{state.files.length ? 'No matching files' : 'Your conversion queue is empty'}</b><p>{state.files.length ? 'Change the filter to see other jobs.' : 'Add a supported audio or video file to begin.'}</p></div>}
@@ -455,7 +480,7 @@ function Studio() {
     </div>
     <section className="discover-section">
       <div><Eyebrow>EXPLORE CONVERTA</Eyebrow><h2>Start with the format you have.</h2><p>Use a dedicated conversion guide for common audio and video workflows.</p></div>
-      <div className="discover-links">{['/mp4-to-mp3/','/wav-to-mp3/','/flac-to-mp3/','/mp3-to-wav/'].map((path) => {const page = getSeoPage(path);return <Link to={path} key={path}><span><AudioLines /></span><b>{page.heading}</b><ArrowRight /></Link>;})}</div>
+      <div className="discover-links">{['/audio-studio/','/mp4-to-mp3/','/wav-to-mp3/','/flac-to-mp3/','/mp3-to-wav/'].map((path) => {const page = getSeoPage(path);return <Link to={path} key={path}><span><AudioLines /></span><b>{page.heading}</b><ArrowRight /></Link>;})}</div>
     </section>
   </>;
 }
@@ -517,7 +542,7 @@ function HistoryPage() {
       </div>
       {tab === 'conversions' && history.length ? <div className="record-list">{grouped.map(([day,items]) => <section className="date-group" key={day}><h3>{day}</h3>{items.map((item) => <article className="history-record" key={item.id}>
         <span className={'record-icon ' + item.status}>{item.status === 'completed' ? <FileAudio2 /> : item.status === 'failed' ? <XCircle /> : <Pause />}</span>
-        <div className="record-main"><b>{item.name}</b><small>{item.sourceName ? 'Source: ' + item.sourceName + ' · ' : ''}{dateTime(item.date)} · {formatBytes(item.size || item.sourceSize || 0)}</small>{item.error && <p className="record-error">{item.error}</p>}</div>
+        <div className="record-main"><b>{item.name}</b><small>{item.sourceName ? 'Source: ' + item.sourceName + ' · ' : ''}{dateTime(item.date)} · {formatBytes(item.size || item.sourceSize || 0)}</small>{item.error && <p className="record-error">{item.error}</p>}{item.outputId && <StoredOutputPreview resultId={item.outputId} outputName={item.name} />}</div>
         <span className={'record-status ' + item.status}>{item.status}</span>
         {item.outputId && <button className="record-action" disabled={busy === item.id} onClick={() => downloadItem(item)} aria-label={'Download ' + item.name}>{busy === item.id ? <LoaderCircle className="spin" /> : <Download />}</button>}
         <button className="record-action subtle" onClick={() => deleteItem(item)} aria-label={'Delete history item ' + item.name}><Trash2 /></button>
@@ -552,7 +577,7 @@ function SEOContentPage({page,extraPages=[]}) {
   return <div className="seo-page">
     <div className="seo-hero">
       <div className="seo-hero-copy"><Eyebrow>{page.eyebrow}</Eyebrow><h1>{page.heading}</h1><p>{page.intro}</p><div className="seo-hero-actions"><Link className="convert-button" to="/"><Sparkles /> Open the converter <ArrowRight /></Link><span><ShieldCheck /> Local browser processing</span></div></div>
-      <div className="seo-visual"><span className="seo-visual-icon">{isGuide ? <BookOpen /> : <AudioWaveform />}</span><div className="seo-visual-wave"><i /><i /><i /><i /><i /><i /><i /><i /><i /></div><b>{page.kind === 'guide' ? 'FORMAT GUIDE' : page.kind === 'guides' ? 'KNOWLEDGE LIBRARY' : 'LOCAL CONVERSION'}</b><small>CONVERTA STUDIO V4</small></div>
+      <div className="seo-visual"><span className="seo-visual-icon">{isGuide ? <BookOpen /> : <AudioWaveform />}</span><div className="seo-visual-wave"><i /><i /><i /><i /><i /><i /><i /><i /><i /></div><b>{page.kind === 'guide' ? 'FORMAT GUIDE' : page.kind === 'guides' ? 'KNOWLEDGE LIBRARY' : 'LOCAL CONVERSION'}</b><small>CONVERTA STUDIO V5</small></div>
     </div>
     <div className="seo-feature-grid">{(page.benefits || []).map((benefit,index) => <article key={benefit}><span>{index === 0 ? <ShieldCheck /> : index === 1 ? <Gauge /> : index === 2 ? <HistoryIcon /> : <CheckCircle2 />}</span><p>{benefit}</p></article>)}</div>
     <article className="article-card">

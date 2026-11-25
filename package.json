@@ -1,9 +1,9 @@
 {
   "name": "converta-studio",
   "private": true,
-  "version": "4.0.0",
+  "version": "5.0.0",
   "type": "module",
-  "description": "A private, browser-based audio conversion studio with local history and crawlable conversion guides.",
+  "description": "A private browser-based audio conversion, editing, voice effects and lyric-video production studio.",
   "homepage": "https://chryslucky.github.io/converta/",
   "scripts": {
     "dev": "vite",
