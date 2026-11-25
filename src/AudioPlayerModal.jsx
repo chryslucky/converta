@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  AudioLines, ChevronDown, Maximize2, Pause, Play, RotateCcw, RotateCw,
+  AudioLines, AudioWaveform, ChevronDown, Maximize2, Pause, Play, RotateCcw, RotateCw,
   Volume1, Volume2, VolumeX, X
 } from 'lucide-react';
 import './audio-player-modal.css';
@@ -157,7 +157,7 @@ export default function AudioPlayerModal({
     {open&&<div className="converta-audio-overlay" onMouseDown={(event)=>{if(event.target===event.currentTarget)closePlayer();}}>
       <section className="converta-audio-modal" role="dialog" aria-modal="true" aria-label={'Audio player: '+title}>
         <div className="converta-audio-modal-top">
-          <div className="converta-audio-modal-brand"><span><AudioLines/></span><div><b>CONVERTA PLAYER</b><small>{subtitle}</small></div></div>
+          <div className="converta-audio-modal-brand"><span><AudioWaveform/></span><div><b>CONVERTA PLAYER</b><small>{subtitle}</small></div></div>
           <button className="converta-audio-close" type="button" onClick={closePlayer} aria-label="Close audio player"><X/></button>
         </div>
         <div className="converta-audio-art">
