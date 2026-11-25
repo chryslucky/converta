@@ -1,18 +1,18 @@
 {
   "name": "converta-studio",
   "private": true,
-  "version": "3.0.0",
+  "version": "4.0.0",
   "type": "module",
-  "description": "A private, browser-based media conversion studio powered by FFmpeg WebAssembly.",
+  "description": "A private, browser-based audio conversion studio with local history and crawlable conversion guides.",
   "homepage": "https://chryslucky.github.io/converta/",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/copy-ffmpeg.mjs",
-    "build": "vite build",
+    "prebuild": "node scripts/copy-ffmpeg.mjs && node scripts/generate-search-index.mjs",
+    "build": "vite build && node scripts/prerender-seo.mjs",
     "preview": "vite preview",
     "test": "node --test",
     "check": "npm test && npm run build",
-    "predev": "node scripts/copy-ffmpeg.mjs"
+    "predev": "node scripts/copy-ffmpeg.mjs && node scripts/generate-search-index.mjs"
   },
   "dependencies": {
     "@ffmpeg/core": "0.12.10",

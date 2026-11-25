@@ -1,21 +1,41 @@
-# Deployment notes
+# Converta 4.0 deployment notes
 
-## GitHub Pages
+## Production target
 
-- Repository: `chryslucky/converta`
-- Production branch: `main`
-- Vite base path: `/converta/`
-- Expected URL: https://chryslucky.github.io/converta/
-- Router: React Router `HashRouter` (`#/`, `#/history`, `#/about`)
+- Primary Vercel URL: https://convertapro.vercel.app/
+- Repository: chryslucky/converta
+- Production branch: main
+- Framework: Vite + React
+- Output directory: dist
+- Runtime: Node.js 22
+- Client routing: React Router BrowserRouter
 
-The `Deploy Converta to GitHub Pages` workflow is triggered by pushes to `main` and manual dispatch. It builds `dist/` and deploys that artifact using the official Pages Actions. Before its first successful run, verify that **Settings → Pages → Build and deployment → Source** is set to **GitHub Actions**. This repository setting is not writable through the connected GitHub actions exposed in this session.
+## Build pipeline
 
-If first-time repository enablement is blocked by account policy, visit **Repository Settings → Pages** and select **GitHub Actions** as the build source, then rerun the Pages workflow.
+The production build runs the npm prebuild lifecycle, which copies the FFmpeg WebAssembly runtime and generates the long-tail search index. Vite then builds the application. The post-build SEO generator creates route-specific HTML documents, route metadata, structured data, sitemap.xml and robots.txt.
 
-## Rollback
+Vercel rewrites unknown application paths to the application shell. Existing pre-rendered route documents and static assets should be served as files before the fallback rewrite. Verify direct requests to /mp4-to-mp3/, /guides/wav-vs-mp3/ and /history/ after releases.
 
-Use the GitHub Actions deployment history to inspect a failed run. To roll back the website, revert the relevant commit on `main`; the normal CI and Pages workflows will rebuild and publish the reverted state.
+GitHub Pages uses the /converta/ base path while Vercel uses /. The Vite base setting selects the correct path using the GitHub Actions environment.
 
-## Runtime considerations
+## SEO verification
 
-The FFmpeg WebAssembly runtime is copied into the static build and served by GitHub Pages. It is downloaded on first conversion, not when the studio shell first renders. The browser stores output blobs locally in IndexedDB. Browser cleanup and storage quota policies can remove that data.
+The sitemap includes only public indexable pages. The personal history page is marked noindex,follow; it is not included in the sitemap. Each public route receives its own title, description, canonical URL, Open Graph metadata, visible page copy and JSON-LD. Internal links use real anchor destinations through React Router links.
+
+## Verification
+
+    npm run check
+    npm run build
+
+Confirm the following on production after a release:
+- Home page loads with no hash fragment.
+- Directly load and refresh a conversion landing page.
+- Browser tab title changes on navigation.
+- /sitemap.xml and /robots.txt return valid files.
+- /history/ loads but is noindex.
+- FFmpeg runtime assets are returned from /ffmpeg/.
+- Queue progress, output downloads and dated history work on a supported browser.
+
+## Local storage
+
+Conversion outputs live in IndexedDB and activity/preferences are held in browser storage. Site-data cleanup can remove them. This is deliberate client-side storage, not a cloud backup.

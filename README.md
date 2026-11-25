@@ -1,94 +1,79 @@
-# Converta Studio
+# Converta Studio 4.0
 
-A private, browser-based media conversion workspace. Converta converts audio files and extracts audio tracks from video using **FFmpeg WebAssembly**. Source media is processed in the browser and is never uploaded to a conversion server.
+A private, browser-based media conversion workspace for audio conversion and audio extraction from supported video containers. FFmpeg WebAssembly processes selected media in the browser; the project does not include a media-upload or server-side conversion API.
 
-**Vercel site:** https://convertapro-three.vercel.app/  
-**GitHub Pages site:** https://chryslucky.github.io/converta/  
-**Repository:** https://github.com/chryslucky/converta
+Production site: https://convertapro.vercel.app/  
+Alternative Vercel deployment: https://convertapro-three.vercel.app/  
+GitHub Pages: https://chryslucky.github.io/converta/  
+Repository: https://github.com/chryslucky/converta
 
-## Features
+## Version 4.0
 
-- Multi-file drag-and-drop import and a sequential batch queue.
-- Per-file states for ready, converting, complete, failed and cancelled work.
-- Audio export to MP3, WAV, FLAC, AAC and OGG.
-- Bitrate controls for lossy formats and optional sample-rate selection.
-- FFmpeg progress-event feedback, retry-by-running-again behaviour and active-job cancellation. Progress events are experimental in ffmpeg.wasm and may not provide a smooth percentage for every media type or browser.
-- Downloadable results and conversion history stored in IndexedDB.
-- Responsive studio, history and about pages, with hash-based routing and a not-found view.
-- Keyboard-accessible file selection and reduced-motion styling.
+- Clean browser-history routes with no hash fragments.
+- Route-specific browser titles, descriptions, canonical URLs, Open Graph metadata and JSON-LD.
+- Build-time pre-rendered documents for the home page, conversion landing pages, format guides and about page.
+- XML sitemap and robots.txt generated during production build; the private history route is marked noindex.
+- A searchable in-app discovery index with more than 1,000 natural conversion query phrases and at least 2,000 searchable query terms. This index powers converter search suggestions rather than injecting keyword lists into page content.
+- Batch conversion with per-file progress and an overall progress indicator.
+- Dated records for completed, failed and cancelled conversion attempts, plus file additions, job starts, downloads and other workspace activity.
+- Local export storage in IndexedDB and preferences/history metadata in browser storage.
+- Modern Lucide icons across the studio, workspace navigation, format controls, guides and history.
 
-## Privacy and processing model
+## Conversion features
 
-The conversion engine runs client-side through FFmpeg WebAssembly. The FFmpeg JavaScript and WebAssembly runtime are served from the app's own deployment origin and loaded when conversion is first requested. Google Fonts and third-party CDN runtime loading are not required. Your selected source files and converted outputs are not sent to a Converta backend; no conversion backend exists in this project.
+Converta exports audio as MP3, WAV, FLAC, AAC and OGG. Common supported video containers can be used as sources when they contain a decodable audio stream; the output is audio only. The current video workflow selects the first audio stream and does not edit or re-encode the video track.
 
-The browser stores export blobs in IndexedDB and non-sensitive preferences/history metadata in local storage. Browser cleanup, private browsing policies, quota limits or clearing site data can remove that local library. Download important exports to a normal device folder.
+For lossy formats MP3, AAC and OGG, the workspace offers bitrate controls. WAV and FLAC use their respective PCM/lossless output profiles. A 300 MB per-file application limit helps reduce browser memory pressure. Actual decoding support depends on the source codec and the bundled FFmpeg build.
 
-No account system, OAuth, cloud sync, server-side conversion, or social authentication is included or advertised.
+## Privacy and local storage
 
-## Supported formats and limits
+Source files are processed in the browser with FFmpeg WebAssembly. Converta does not include an account system, cloud sync or server-side media conversion endpoint. Completed output blobs are saved in IndexedDB, while conversion and activity records are persisted locally in browser storage.
 
-Converta accepts common audio and video containers recognized by the bundled FFmpeg build. It exports MP3, WAV, FLAC, AAC (ADTS `.aac`) and OGG Vorbis. Video files must contain an audio stream. A 300 MB per-file application limit is enforced to reduce the risk of browser memory exhaustion; available memory and performance also depend on the device and browser.
+Browser cleanup, private-browsing policies, storage quotas or clearing site data may remove local records and output files. Download important exports to a normal device folder. Local browser history is not a backup.
 
-The initial conversion may take time because the browser loads the FFmpeg WebAssembly runtime. Processing is sequential to keep memory pressure predictable. Browser tab suspension, low memory, unsupported codecs, or a browser that blocks WebAssembly can interrupt a conversion.
+## SEO architecture
+
+The build creates individual HTML documents for a curated set of converter and guide routes so each public page has meaningful static text before client-side JavaScript runs. The app also updates page titles and metadata during browser navigation. The sitemap contains only public, indexable pages; personal conversion history is excluded.
+
+The generated search corpus provides long-tail converter query suggestions in the product UI. It is not rendered as hidden page text. Public landing pages and guides contain task-specific instructions, codec limitations and FAQs rather than repeated keyword blocks.
 
 ## Local development
 
 Requirements: Node.js 20.19+ (or 22.12+) and npm.
 
-```bash
-npm install
-npm run dev
-```
+    npm install
+    npm run dev
+    npm test
+    npm run build
+    npm run check
 
-Open the local URL printed by Vite. Local development uses the domain-root base path `/`.
-
-## Checks and production build
-
-```bash
-npm test
-npm run build
-# or run both together
-npm run check
-```
-
-The prebuild script copies the `@ffmpeg/core` ESM JavaScript and WebAssembly runtime into `public/ffmpeg/`, so the built site does not depend on a third-party CDN for the conversion engine. Review upstream package licenses and distribution obligations before redistributing the application.
+The prebuild lifecycle copies the FFmpeg runtime into public/ffmpeg/ and generates the search index. The build then generates route-specific HTML documents, sitemap.xml and robots.txt.
 
 ## Deployment targets
 
-The Vite base path is selected for each deployment target:
+- Vercel serves the application at the domain root /.
+- GitHub Pages serves the repository site beneath /converta/.
+- Vercel uses BrowserRouter and vercel.json rewrites for direct path requests. Pre-rendered route documents provide route-specific HTML metadata and content to crawlers.
+- GitHub Pages uses its repository subpath and the static route documents generated at build time.
 
-- Vercel serves the app at the domain root `/`.
-- GitHub Pages serves the repository site beneath `/converta/`.
+The GitHub Actions workflows run CI and publish GitHub Pages from main. The repository Pages source must be set to GitHub Actions in Settings → Pages before the first Pages deployment.
 
-The GitHub Pages build runs in GitHub Actions, where `GITHUB_ACTIONS=true` selects the `/converta/` base path. Vercel builds use `/`. The app uses `HashRouter` so application routes work on both static hosting targets.
+## Core structure
 
-The repository includes two workflows:
+    src/
+      App.jsx                   Workspace, history, search and SEO routes
+      conversion.js             Output profiles and media helpers
+      engine.js                 FFmpeg WebAssembly conversion lifecycle
+      main.jsx                  React entry point with BrowserRouter
+      store.js                  Local settings, job history and activity state
+      storage.js                IndexedDB output file storage
+      styles.css                Responsive v4 design system
+      data/seo-pages.js         Public landing pages, guides and route metadata
+    scripts/
+      copy-ffmpeg.mjs            Copies FFmpeg runtime into the static build
+      generate-search-index.mjs  Generates long-tail search suggestions
+      prerender-seo.mjs          Writes crawlable HTML, sitemap and robots files
 
-- `.github/workflows/ci.yml` — installs dependencies, runs unit tests, and creates a production build.
-- `.github/workflows/pages.yml` — configures Pages, builds `dist/`, uploads the artifact, and deploys it.
+## Licensing
 
-Before the first GitHub Pages deployment, the repository Pages source must be set to **GitHub Actions** in Settings → Pages if Pages has not already been enabled.
-
-## Project structure
-
-```text
-src/
-  App.jsx          Application routes and studio/history/about screens
-  conversion.js    Format definitions and pure conversion helpers
-  engine.js        FFmpeg WebAssembly lifecycle and conversion function
-  main.jsx         React entry point and HashRouter
-  store.js         Zustand state and preference/history persistence
-  storage.js       IndexedDB output storage
-  styles.css       Responsive design system and accessibility styles
-public/
-  ffmpeg/          FFmpeg runtime assets copied during the build
-  favicon.svg
-scripts/
-  copy-ffmpeg.mjs  Copies the FFmpeg runtime into the static site
- tests/
-  conversion.test.js
-```
-
-## License
-
-No project-wide license has been added. The FFmpeg runtime and npm dependencies retain their respective upstream licenses; review those licenses before redistributing modified builds.
+No project-wide license has been added. Review upstream licenses for FFmpeg and npm dependencies before redistributing modified builds.
