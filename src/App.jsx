@@ -1,13 +1,14 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import AudioPlayerModal from './AudioPlayerModal.jsx';
 import AudioStudio from './AudioStudio.jsx';
+import RecentMediaShelf from './RecentMediaShelf.jsx';
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
   Activity, ArrowDownToLine, ArrowRight, AudioLines, AudioWaveform, BadgeCheck, BookOpen,
   Check, CheckCircle2, ChevronDown, CircleHelp, Clock3, Command, Download, FileAudio2,
   FileVideo2, Files, Filter, FolderOpen, Gauge, HardDrive, Headphones, History as HistoryIcon,
   Info, ListFilter, LoaderCircle, LockKeyhole, Menu, Music2, Pause, Play, Plus, Search,
-  Settings2, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, Upload, UploadCloud, X,
+  PanelLeftClose, PanelLeftOpen, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, Upload, UploadCloud, X,
   XCircle, Zap
 } from 'lucide-react';
 import searchIndex from './data/search-index.json';
@@ -102,40 +103,64 @@ function usePageSEO() {
   },[location.pathname]);
 }
 
-function Brand() {
-  return <Link to="/" className="brand" aria-label="Converta home">
+function Brand({onClick}) {
+  return <Link to="/" className="brand" aria-label="Converta home" onClick={onClick}>
     <span className="brand-mark"><AudioWaveform /></span>
     <span className="brand-word">converta<span>.</span><small>MEDIA WORKSPACE</small></span>
   </Link>;
 }
-function Sidebar() {
-  return <aside className="sidebar">
-    <Brand />
+function Sidebar({mobileOpen, onMobileClose}) {
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.matchMedia('(min-width: 701px)').matches
+        && localStorage.getItem('converta-sidebar-collapsed') === 'true';
+    } catch { return false; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('converta-sidebar-collapsed', String(collapsed)); } catch {}
+  }, [collapsed]);
+
+  const closeOnNavigate = () => onMobileClose?.();
+  const sidebarClass = 'sidebar' + (collapsed ? ' is-collapsed' : '') + (mobileOpen ? ' is-mobile-open' : '');
+
+  return <aside className={sidebarClass} aria-label="Main navigation">
+    <div className="sidebar-brand-row">
+      <Brand onClick={closeOnNavigate} />
+      <div className="sidebar-controls">
+        <button type="button" className="sidebar-collapse-toggle" onClick={() => setCollapsed((value) => !value)}
+          aria-label={collapsed ? 'Expand sidebar labels' : 'Collapse sidebar to icons'} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+          {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+        </button>
+        <button type="button" className="sidebar-close" onClick={closeOnNavigate} aria-label="Close navigation"><X /></button>
+      </div>
+    </div>
     <div className="sidebar-section">
       <p className="sidebar-label">WORKSPACE</p>
       <nav className="side-nav" aria-label="Workspace navigation">
-        <NavLink to="/" end><LayersIcon />Studio</NavLink>
-        <NavLink to="/history/"><HistoryIcon />History</NavLink>
+        <NavLink to="/" end title="Studio" onClick={closeOnNavigate}><LayersIcon /><span>Studio</span></NavLink>
+        <NavLink to="/history/" title="History" onClick={closeOnNavigate}><HistoryIcon /><span>History</span></NavLink>
       </nav>
     </div>
     <div className="sidebar-section">
       <p className="sidebar-label">EXPLORE</p>
-      <nav className="side-nav" aria-label="Information navigation">
-        <NavLink to="/audio-studio/"><AudioWaveform />Audio Studio 5.0</NavLink>
-        <NavLink to="/audio-converter/"><AudioLines />Audio converter</NavLink>
-        <NavLink to="/video-to-audio/"><FileVideo2 />Video to audio</NavLink>
-        <NavLink to="/guides/"><BookOpen />Guides</NavLink>
-        <NavLink to="/about/"><Info />About Converta</NavLink>
+      <nav className="side-nav" aria-label="Tools and information">
+        <NavLink to="/audio-studio/" title="Audio Studio" onClick={closeOnNavigate}><AudioWaveform /><span>Audio Studio</span></NavLink>
+        <NavLink to="/audio-converter/" title="Audio converter" onClick={closeOnNavigate}><AudioLines /><span>Audio converter</span></NavLink>
+        <NavLink to="/video-to-audio/" title="Video to audio" onClick={closeOnNavigate}><FileVideo2 /><span>Video to audio</span></NavLink>
+        <NavLink to="/guides/" title="Guides" onClick={closeOnNavigate}><BookOpen /><span>Guides</span></NavLink>
+        <NavLink to="/about/" title="About Converta" onClick={closeOnNavigate}><Info /><span>About Converta</span></NavLink>
       </nav>
     </div>
     <div className="sidebar-spacer" />
     <div className="privacy-card">
       <div className="privacy-icon"><ShieldCheck /></div>
       <b>Private by design</b>
-      <p>Source media is processed in this browser. Your files are not uploaded to a conversion server.</p>
+      <p>Source media stays in this browser. Saved exports can be reused without downloading them again.</p>
       <span className="privacy-status"><i /> LOCAL ENGINE</span>
     </div>
-    <div className="sidebar-bottom"><span>CONVERTA STUDIO</span><b>VERSION 5.0</b></div>
+    <div className="sidebar-bottom"><span>CONVERTA STUDIO</span><b>VERSION 5.1</b></div>
   </aside>;
 }
 function LayersIcon() { return <Command />; }
@@ -182,8 +207,7 @@ function SearchBox() {
     </div>}
   </div>;
 }
-function Topbar() {
-  const [menuOpen,setMenuOpen] = useState(false);
+function Topbar({mobileOpen, onMenuToggle}) {
   return <header className="topbar">
     <div className="mobile-brand"><Brand /></div>
     <div className="topbar-leading"><span className="status-dot" /> ALL SYSTEMS LOCAL</div>
@@ -192,16 +216,8 @@ function Topbar() {
       <Link to="/guides/" className="topbar-help" aria-label="Read conversion guides"><CircleHelp /></Link>
       <Link to="/history/" className="topbar-history"><Clock3 /> History</Link>
     </div>
-    <button className="mobile-menu" aria-label="Open navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Menu /></button>
-    {menuOpen && <nav className="mobile-menu-panel">
-      <NavLink to="/" onClick={() => setMenuOpen(false)}>Studio</NavLink>
-      <NavLink to="/history/" onClick={() => setMenuOpen(false)}>History</NavLink>
-      <NavLink to="/audio-studio/" onClick={() => setMenuOpen(false)}>Audio Studio 5.0</NavLink>
-      <NavLink to="/audio-converter/" onClick={() => setMenuOpen(false)}>Audio converter</NavLink>
-      <NavLink to="/video-to-audio/" onClick={() => setMenuOpen(false)}>Video to audio</NavLink>
-      <NavLink to="/guides/" onClick={() => setMenuOpen(false)}>Guides</NavLink>
-      <NavLink to="/about/" onClick={() => setMenuOpen(false)}>About</NavLink>
-    </nav>}
+    <button type="button" className="mobile-menu" aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'}
+      aria-expanded={mobileOpen} onClick={onMenuToggle}><Menu /></button>
   </header>;
 }
 function Footer() {
@@ -213,11 +229,30 @@ function Footer() {
 }
 
 function Layout() {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const location = useLocation();
   usePageSEO();
-  return <div className="app-shell">
-    <Sidebar />
+
+  useEffect(() => setMobileNavOpen(false), [location.pathname]);
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setMobileNavOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 701px)');
+    const closeOnDesktop = () => { if (desktop.matches) setMobileNavOpen(false); };
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => desktop.removeEventListener('change', closeOnDesktop);
+  }, []);
+
+  return <div className="app-shell app-enter">
+    <Sidebar mobileOpen={mobileNavOpen} onMobileClose={() => setMobileNavOpen(false)} />
+    {mobileNavOpen && <button type="button" className="sidebar-backdrop" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />}
     <div className="app-main">
-      <Topbar />
+      <Topbar mobileOpen={mobileNavOpen} onMenuToggle={() => setMobileNavOpen((value) => !value)} />
       <div className="page-content">
         <Routes>
           <Route path="/" element={<Studio />} />
@@ -416,6 +451,13 @@ function Studio() {
           <div className="format-list"><span>MP3</span><span>WAV</span><span>FLAC</span><span>AAC</span><span>OGG</span><span>MP4</span><span>MOV</span></div>
           <small>Audio and video sources · Multiple files · 300 MB maximum per file</small>
         </div>
+
+        <RecentMediaShelf
+          title="Recent exports"
+          actionLabel="Reuse"
+          onImport={(file) => addFiles([file])}
+          limit={3}
+        />
 
         {state.isRunning && <section className="batch-progress">
           <div className="batch-progress-heading"><div><span className="status-pulse" /><b>{state.isEngineLoading ? 'Preparing local conversion engine' : 'Batch conversion in progress'}</b></div><strong>{totalProgress}%</strong></div>
