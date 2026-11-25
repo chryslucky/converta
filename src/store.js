@@ -1,11 +1,37 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-export const useStudio=create(persist((set)=>({
- files:[],format:'mp3',quality:'192k',history:[],progress:0,activeName:'',engineLoading:false,
- addFiles:(files)=>set(s=>({files:[...s.files,...files.map(file=>({id:crypto.randomUUID(),file,name:file.name,size:file.size,status:'ready',progress:0}))]})),
- removeFile:(id)=>set(s=>({files:s.files.filter(f=>f.id!==id)})),clearFiles:()=>set({files:[],progress:0,activeName:''}),
- setFormat:(format)=>set({format}),setQuality:(quality)=>set({quality}),setEngine:(p)=>set(p),
- updateFile:(id,p)=>set(s=>({files:s.files.map(f=>f.id===id?{...f,...p}:f)})),
- updateProgress:(id,progress,total,name)=>set(s=>({progress:total,activeName:name,files:s.files.map(f=>f.id===id?{...f,status:'converting',progress}:f)})),
- addHistory:(record)=>set(s=>({history:[record,...s.history].slice(0,40)})),clearHistory:()=>set({history:[]})
-}),{name:'converta-studio-v2',partialize:s=>({format:s.format,quality:s.quality,history:s.history})}));
+import { createJSONStorage, persist } from 'zustand/middleware';
+
+export const useStudio = create(persist((set) => ({
+  files: [],
+  format: 'mp3',
+  bitrate: '192k',
+  sampleRate: 'source',
+  history: [],
+  isRunning: false,
+  isEngineLoading: false,
+  engineProgress: 0,
+  activeId: null,
+  addFiles: (files) => set((state) => ({
+    files: [...state.files, ...files.map((file) => ({
+      id: crypto.randomUUID(), file, name: file.name, size: file.size,
+      status: 'ready', progress: 0, resultId: null, outputName: null, error: null
+    }))]
+  })),
+  removeFile: (id) => set((state) => ({ files: state.files.filter((file) => file.id !== id) })),
+  clearFiles: () => set({ files: [], activeId: null }),
+  setFormat: (format) => set({ format }),
+  setBitrate: (bitrate) => set({ bitrate }),
+  setSampleRate: (sampleRate) => set({ sampleRate }),
+  updateFile: (id, patch) => set((state) => ({ files: state.files.map((file) => file.id === id ? { ...file, ...patch } : file) })),
+  setRunning: (isRunning) => set({ isRunning }),
+  setEngineLoading: (isEngineLoading) => set({ isEngineLoading }),
+  setEngineProgress: (engineProgress) => set({ engineProgress }),
+  setActiveId: (activeId) => set({ activeId }),
+  addHistory: (item) => set((state) => ({ history: [item, ...state.history.filter((entry) => entry.id !== item.id)].slice(0, 60) })),
+  removeHistory: (id) => set((state) => ({ history: state.history.filter((entry) => entry.id !== id) })),
+  clearHistory: () => set({ history: [] })
+}), {
+  name: 'converta-studio-preferences',
+  storage: createJSONStorage(() => localStorage),
+  partialize: (state) => ({ format: state.format, bitrate: state.bitrate, sampleRate: state.sampleRate, history: state.history })
+}));

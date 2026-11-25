@@ -1,14 +1,184 @@
 import { useRef, useState } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
-import { ArrowDownToLine,ArrowRight,AudioLines,Check,ChevronDown,Clock3,FileAudio2,FileVideo2,Headphones,LoaderCircle,LockKeyhole,Menu,Music2,ShieldCheck,Sparkles,Upload,X,Zap } from 'lucide-react';
-import {useStudio} from './store.js';import{convertMedia,getEngine,getOutput,storeOutput}from './engine.js';
-const formats=[['mp3','MP3','Compact'],['wav','WAV','Studio'],['flac','FLAC','Lossless'],['aac','AAC','Efficient'],['ogg','OGG','Open']];
-const size=n=>n>1048576?`${(n/1048576).toFixed(1)} MB`:`${Math.max(1,Math.round(n/1024))} KB`;const date=d=>new Date(d).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
-function shellDownload(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),30000)}
-function Header(){const[open,setOpen]=useState(false);return<header className="topbar"><Link className="brand"to="/"><span><AudioLines size={21}/></span>converta<i>.</i></Link><button className="menu"onClick={()=>setOpen(!open)}aria-label="Toggle navigation">{open?<X/>:<Menu/>}</button><nav className={open?'nav open':'nav'}><NavLink end to="/"onClick={()=>setOpen(false)}>Studio</NavLink><NavLink to="/history"onClick={()=>setOpen(false)}>History</NavLink><NavLink to="/about"onClick={()=>setOpen(false)}>About</NavLink></nav><div className="privacy"><ShieldCheck size={14}/> Private by design</div></header>}
-function Footer(){return<footer><span>© {new Date().getFullYear()} Converta Studio</span><span><LockKeyhole size={13}/> Files stay on your device</span><a href="https://github.com/chryslucky/converta"target="_blank"rel="noreferrer">Open source <ArrowRight size={13}/></a></footer>}
-function Home(){const input=useRef(null),[drag,setDrag]=useState(false),[notice,setNotice]=useState('');const s=useStudio();const busy=s.files.some(f=>f.status==='converting');const accept=list=>{const all=[...list],valid=all.filter(f=>f.type.startsWith('audio/')||f.type.startsWith('video/')||/\.(mp3|wav|flac|m4a|aac|ogg|opus|mp4|mov|mkv|webm|avi|m4v)$/i.test(f.name));if(valid.length)s.addFiles(valid);if(valid.length<all.length)setNotice(`${all.length-valid.length} unsupported file(s) skipped.`)};
-const run=async()=>{if(!s.files.length||busy)return;s.setEngine({engineLoading:true});try{await getEngine()}catch(e){setNotice(`Could not load conversion engine: ${e.message}`);s.setEngine({engineLoading:false});return}s.setEngine({engineLoading:false});const queue=[...useStudio.getState().files];for(let i=0;i<queue.length;i++){const f=queue[i];if(f.status==='done')continue;s.updateFile(f.id,{status:'converting',progress:0});try{const blob=await convertMedia(f.file,s.format,s.quality,p=>useStudio.getState().updateProgress(f.id,p,Math.round((i+p/100)/queue.length*100),f.name));const id=crypto.randomUUID(),base=f.name.replace(/\.[^.]+$/,'')||'converta-export',name=`${base}.${s.format}`,record={id,name,size:blob.size,format:s.format,date:new Date().toISOString()};await storeOutput(id,blob);s.addHistory(record);s.updateFile(f.id,{status:'done',progress:100,resultId:id,outputName:name})}catch(e){s.updateFile(f.id,{status:'error',error:e.message||'Conversion failed'});setNotice(`${f.name}: ${e.message||'Conversion failed'}`)}}s.setEngine({progress:0,activeName:''})};
-const save=async(id,name)=>{try{const b=await getOutput(id);if(!b)throw new Error('Saved output is unavailable.');shellDownload(b,name)}catch(e){setNotice(e.message)}};
-return<main className="main"><section className="hero"><div className="eyebrow"><i/> THE PRIVATE MEDIA STUDIO</div><h1>Your media, <span>beautifully converted.</span></h1><p>Extract audio from video or transform between professional audio formats. Private, fast, and processed on your device.</p></section>{notice&&<div className="notice">{notice}<button onClick={()=>setNotice('')}><X size={15}/></button></div>}<div className="layout"><section className="card studio"><div className="cardhead"><div><label>01 / IMPORT</label><h2>Bring your media</h2></div><b>AUDIO + VIDEO</b></div><div className={`drop ${drag?'drag':''}`}onClick={()=>input.current?.click()}onDragOver={e=>{e.prevent(e);setDrag(true)}}onDragLeave={()=>setDrag(false)}onDrop={e=>{e.preventDefault();setDrag(false);accept(e.dataTransfer.files)}}role="button"tabIndex="0"><input ref={input}hidden type="file"multiple accept="audio/*,video/*,.mkv,.avi,.opus"onChange={e=>{accept(e.target.files);e.target.value=''}}/><div className="upload"><Upload size={24}/></div><strong>Drop files to get started</strong><span>or <em>browse your device</em></span><small>MP4, MOV, MP3, WAV, FLAC and more · Never uploaded</small></div>{s.files.length>0&&<div className="queue"><div className="queuehead">YOUR FILES <b>{s.files.length}</b><button onClick={s.clearFiles}disabled={busy}>Clear all</button></div>{s.files.map(f=><div className="file"key={f.id}><div className="fileicon">{f.file.type.startsWith('video/')?<FileVideo2 size={18}/>:<FileAudio2 size={18}/>}</div><div className="fileinfo"><strong>{f.name}</strong><small>{size(f.size)} · {f.status==='converting'?`${f.progress}%`:f.status==='done'?'Ready':f.status==='error'?f.error:'Ready'}</small>{f.status==='converting'&&<div className="mini"><i style={{width:`${f.progress}%`}}/></div>}</div>{f.status==='done'?<Check className="good"size={17}/>:f.status==='converting'?<LoaderCircle className="spin"size={17}/>:<button className="remove"onClick={()=>s.removeFile(f.id)}disabled={busy}><X size={16}/></button>}</div>)}</div>}{busy&&<div className="total"><span><LoaderCircle className="spin"size={14}/> Converting {s.activeName}</span><b>{s.progress}%</b><div><i style={{width:`${s.progress}%`}}/></div></div>}<div className="formats"><label>02 / CHOOSE YOUR FORMAT</label><div>{formats.map(([id,label,hint])=><button key={id}className={s.format===id?'selected':''}onClick={()=>s.setFormat(id)}><strong>{label}</strong><small>{hint}</small>{s.format===id&&<i><Check size={10}/></i>}</button>)}</div></div><div className="quality"><div><span><Zap size={16}/></span><p><strong>Audio quality</strong><small>Choose the balance that fits</small></p></div><div className="select"><select value={s.quality}onChange={e=>s.setQuality(e.target.value)}><option value="128k">Standard · 128 kbps</option><option value="192k">High · 192 kbps</option><option value="256k">Very high · 256 kbps</option><option value="320k">Maximum · 320 kbps</option></select><ChevronDown size={14}/></div></div><button className="convert"disabled={!s.files.length||busy||s.engineLoading}onClick={run}>{s.engineLoading?<><LoaderCircle className="spin"size={17}/> Preparing engine…</>:busy?<><LoaderCircle className="spin"size={17}/> Converting…</>:<><Sparkles size={17}/> Convert {s.files.filter(f=>f.status!=='done').length||s.files.length} {s.files.length===1?'file':'files'} <ArrowRight size={17}/></>}</button><p className="secure"><LockKeyhole size={13}/> Local processing. Your files are never sent to a server.</p>{s.files.filter(f=>f.status==='done').map(f=><button className="download"key={f.id}onClick={()=>save(f.resultId,f.outputName)}><ArrowDownToLine size={16}/> Download {f.outputName}</button>)}</section><aside><section className="engine"><div className="orb"><AudioLines size={23}/><i/></div><label><i/> PRIVATE CONVERSION ENGINE</label><h2>Studio quality.<br/><em>Zero upload.</em></h2><p>Powered by FFmpeg WebAssembly. Your media stays right here in your browser.</p><div><span><ShieldCheck size={15}/> On-device processing</span><span><Zap size={15}/> Batch conversion</span><span><Headphones size={15}/> Open-source codecs</span></div></section><section className="card recent"><div><label>YOUR WORKSPACE</label><h3>Recent conversions</h3><Link to="/history"><ArrowRight size={16}/></Link></div>{s.history.slice(0,3).length?s.history.slice(0,3).map(h=><div className="recentrow"key={h.id}><span><Music2 size={15}/></span><p><strong>{h.name}</strong><small>{size(h.size)} · {date(h.date)}</small></p><button onClick={()=>save(h.id,h.name)}><ArrowDownToLine size={15}/></button></div>):<div className="empty"><Clock3 size={20}/><strong>Nothing here just yet</strong><small>Your converted files will appear here.</small></div>}</section><section className="tip"><Sparkles size={16}/><p><strong>Made for your workflow</strong><br/>Add a batch, choose a format, and let your browser handle the rest.</p></section></aside></div></main>}
-function History(){const s=useStudio(),[notice,setNotice]=useState('');const save=async h=>{try{const b=await getOutput(h.id);if(!b)throw new Error('Saved output is unavailable.');shellDownload(b,h.name)}catch(e){setNotice(e.message)}};return<main className="page"><div className="pagehead"><label>YOUR WORKSPACE</label><h1>Conversion history</h1><p>Recent conversions saved privately on this device.</p></div>{notice&&<div className="notice">{notice}</div>}<section className="card history">{s.history.length?<><div className="historyhead"><span>{s.history.length} saved conversion{s.history.length===1?'':'s'}</span><button onClick={s.clearHistory}>Clear history</button></div>{s.history.map(h=><div className="historyrow"key={h.id}><span><Music2 size={16}/></span><p><strong>{h.name}</strong><small>{date(h.date)}</small></p><b>{h.format.toUpper?</b></section></main>}
+import { Activity, ArrowDownToLine, ArrowRight, AudioLines, Check, Clock3, FileAudio2, FileVideo2, Files, HardDrive, Info, Layers3, LoaderCircle, LockKeyhole, Music2, Plus, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, UploadCloud, X, Zap } from 'lucide-react';
+import { OUTPUT_FORMATS, formatBytes, isSupportedMedia } from './conversion.js';
+import { convertMedia, getEngine, terminateEngine } from './engine.js';
+import { clearOutputs, deleteOutput, readOutput, saveOutput } from './storage.js';
+import { useStudio } from './store.js';
+
+const dateLabel = (value) => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url; anchor.download = name; anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+function Brand() { return <Link to="/" className="brand"><span><AudioLines /></span><b>converta<em>.</em><small>MEDIA STUDIO</small></b></Link>; }
+
+function Layout() {
+  return <div className="app-shell">
+    <aside className="sidebar">
+      <Brand /><label className="side-label">WORKSPACE</label>
+      <nav aria-label="Main navigation">
+        <NavLink to="/" end><Layers3 />Studio</NavLink>
+        <NavLink to="/history"><Clock3 />History</NavLink>
+        <NavLink to="/about"><Info />About</NavLink>
+      </nav>
+      <div className="side-space" />
+      <div className="privacy-card"><ShieldCheck /><strong>Your files stay yours</strong><p>Media is processed locally in your browser. Source files are never uploaded.</p><small>● Local processing enabled</small></div>
+      <div className="version">Converta Studio <span>v3.0</span></div>
+    </aside>
+    <main>
+      <header className="mobile-head"><Brand /><nav aria-label="Mobile navigation"><NavLink to="/" end aria-label="Studio"><Layers3 /></NavLink><NavLink to="/history" aria-label="History"><Clock3 /></NavLink><NavLink to="/about" aria-label="About"><Info /></NavLink></nav></header>
+      <div className="content"><Routes><Route path="/" element={<Studio />} /><Route path="/history" element={<History />} /><Route path="/about" element={<About />} /><Route path="*" element={<NotFound />} /></Routes></div>
+      <footer><span>© {new Date().getFullYear()} Converta Studio</span><span><LockKeyhole /> Your media stays on this device</span><a href="https://github.com/chryslucky/converta" target="_blank" rel="noreferrer">Open source <ArrowRight /></a></footer>
+    </main>
+  </div>;
+}
+function Heading({ eyebrow, title, description, children }) {
+  return <div className="heading"><div><label>{eyebrow}</label><h1>{title}</h1><p>{description}</p></div>{children}</div>;
+}
+function Notice({ children, onClose }) {
+  if (!children) return null;
+  return <div className="notice" role="status"><span>{children}</span><button type="button" aria-label="Dismiss message" onClick={onClose}><X /></button></div>;
+}
+function Studio() {
+  const state = useStudio();
+  const picker = useRef(null);
+  const cancelled = useRef(false);
+  const [notice, setNotice] = useState('');
+  const completed = state.files.filter((file) => file.status === 'done').length;
+  const pending = state.files.filter((file) => file.status !== 'done').length;
+
+  function addFiles(list) {
+    const input = Array.from(list || []);
+    const accepted = input.filter(isSupportedMedia);
+    if (accepted.length) state.addFiles(accepted);
+    setNotice(input.length === accepted.length ? `${accepted.length} file(s) added to the queue.` : `${input.length - accepted.length} unsupported file(s) were skipped.`);
+  }
+  async function startBatch() {
+    const queue = useStudio.getState().files.filter((file) => file.status !== 'done');
+    if (!queue.length || state.isRunning) return;
+    cancelled.current = false;
+    state.setRunning(true); state.setEngineLoading(true); setNotice('');
+    try {
+      await getEngine((progress) => useStudio.getState().setEngineProgress(progress));
+      state.setEngineLoading(false);
+      for (const queued of queue) {
+        if (cancelled.current) break;
+        const file = useStudio.getState().files.find((item) => item.id === queued.id);
+        if (!file || file.status === 'done') continue;
+        state.setActiveId(file.id);
+        state.updateFile(file.id, { status: 'converting', progress: 0, error: null });
+        try {
+          const settings = useStudio.getState();
+          const blob = await convertMedia(file.file, settings, (progress) => useStudio.getState().updateFile(file.id, { progress }));
+          if (cancelled.current) { state.updateFile(file.id, { status: 'cancelled', progress: 0 }); break; }
+          const id = crypto.randomUUID();
+          const outputName = `${file.name.replace(/\.[^.]+$/, '')}.${settings.format}`;
+          await saveOutput(id, blob);
+          state.addHistory({ id, name: outputName, size: blob.size, format: settings.format, date: new Date().toISOString(), sourceName: file.name });
+          state.updateFile(file.id, { status: 'done', progress: 100, resultId: id, outputName });
+        } catch (error) {
+          state.updateFile(file.id, { status: cancelled.current ? 'cancelled' : 'error', error: error?.message || 'Conversion failed.' });
+          if (!cancelled.current) setNotice(`${file.name}: ${error?.message || 'Conversion failed.'}`);
+        }
+      }
+      if (!cancelled.current && useStudio.getState().files.some((file) => file.status === 'done')) setNotice('Queue processing finished. Your completed exports are saved locally.');
+      else if (cancelled.current) setNotice('Conversion cancelled. Other queued files remain available.');
+    } catch (error) { setNotice(error?.message || 'The conversion engine could not be loaded.'); }
+    finally {
+      state.setRunning(false); state.setEngineLoading(false); state.setEngineProgress(0); state.setActiveId(null); cancelled.current = false;
+    }
+  }
+  function stopBatch() {
+    cancelled.current = true;
+    const activeId = useStudio.getState().activeId;
+    if (activeId) useStudio.getState().updateFile(activeId, { status: 'cancelled', progress: 0 });
+    terminateEngine();
+  }
+  async function downloadResult(file) {
+    try {
+      const blob = await readOutput(file.resultId);
+      if (!blob) throw new Error('This saved output is unavailable in browser storage.');
+      download(blob, file.outputName);
+    } catch (error) { setNotice(error.message); }
+  }
+  function videoFile(file) { return file?.type?.startsWith('video/') || /\.(mp4|mov|mkv|webm|avi|m4v|mpeg|mpg|3gp)$/i.test(file?.name || ''); }
+
+  return <>
+    <Heading eyebrow="PRIVATE MEDIA WORKSPACE" title={<>Your media, <i>in a better format.</i></>} description="Convert audio and extract sound from video with a focused studio that runs on your device.">
+      <span className="secure"><ShieldCheck /> Private by design</span>
+    </Heading>
+    <Notice onClose={() => setNotice('')}>{notice}</Notice>
+    <div className="stats">
+      <div><Files /><small>Queue</small><b>{state.files.length}</b><span>{pending} awaiting conversion</span></div>
+      <div><Check /><small>Completed</small><b>{completed}</b><span>This workspace session</span></div>
+      <div><HardDrive /><small>Stored locally</small><b>{formatBytes(state.history.reduce((sum, item) => sum + (item.size || 0), 0))}</b><span>IndexedDB output library</span></div>
+    </div>
+    <div className="studio-grid">
+      <section className="panel">
+        <div className="panel-title"><label>01 / IMPORT</label><h2>Bring in your media</h2><p>Start with one file or add a full batch.</p></div>
+        <div className="drop" role="button" tabIndex={0} onClick={() => picker.current?.click()} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); picker.current?.click(); } }} onDragOver={(event) => { event.preventDefault(); event.currentTarget.classList.add('over'); }} onDragLeave={(event) => event.currentTarget.classList.remove('over')} onDrop={(event) => { event.preventDefault(); event.currentTarget.classList.remove('over'); addFiles(event.dataTransfer.files); }}>
+          <input ref={picker} type="file" multiple accept="audio/*,video/*,.mkv,.avi,.opus,.flac,.aac,.ogg" hidden onChange={(event) => { addFiles(event.target.files); event.target.value = ''; }} />
+          <span className="upload-icon"><UploadCloud /></span><strong>Drop your media files here</strong><span>or <u>browse files</u> from your device</span>
+          <div className="format-tags">MP3 <b>·</b> WAV <b>·</b> FLAC <b>·</b> MP4 <b>·</b> MOV <b>·</b> + more</div>
+          <small>Audio and video · Multiple files · Up to 300 MB per file</small>
+        </div>
+        <div className="queue-head"><div><label>YOUR QUEUE</label><b>{state.files.length} {state.files.length === 1 ? 'file' : 'files'}</b></div>{state.files.length > 0 && <button className="text-btn" onClick={state.clearFiles} disabled={state.isRunning}><Trash2 /> Clear queue</button>}</div>
+        {state.files.length ? <div className="queue-list">{state.files.map((file) => <article className="file-row" key={file.id}>
+          <span className="file-icon">{videoFile(file.file) ? <FileVideo2 /> : <FileAudio2 />}</span>
+          <div className="file-info"><b title={file.name}>{file.name}</b><small>{formatBytes(file.size)} · {videoFile(file.file) ? 'Video source' : 'Audio source'} · <span className={`state ${file.status}`}>{file.status}</span></small>
+            {file.status === 'converting' && <div className="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={file.progress}><i style={{ width: `${file.progress}%` }} /></div>}
+            {file.status === 'error' && <small className="error-text">{file.error}</small>}
+          </div>
+          <div className="file-actions">{file.status === 'done' && <button onClick={() => downloadResult(file)} aria-label={`Download ${file.outputName}`}><ArrowDownToLine /></button>}<button onClick={() => state.removeFile(file.id)} disabled={state.activeId === file.id} aria-label={`Remove ${file.name}`}><X /></button></div>
+        </article>)}</div> : <div className="queue-empty"><Files /><b>Your queue is ready</b><small>Files you add appear here with live conversion status.</small></div>}
+        {state.isRunning && <div className="running"><LoaderCircle className="spin" /><div><b>{state.isEngineLoading ? 'Preparing conversion engine' : 'Processing your queue'}</b><small>{state.isEngineLoading ? 'Loading the local FFmpeg runtime…' : 'The active file is being converted in your browser.'}</small></div><button onClick={stopBatch}>Cancel</button></div>}
+      </section>
+      <aside className="settings">
+        <section className="panel">
+          <div className="panel-title"><label>02 / OUTPUT</label><h2>Conversion settings</h2><p>Choose how your audio is exported.</p></div>
+          <label className="field-label">Output format <small>5 formats</small></label>
+          <div className="format-grid">{OUTPUT_FORMATS.map((format) => <button key={format.id} onClick={() => state.setFormat(format.id)} className={state.format === format.id ? 'selected' : ''} aria-pressed={state.format === format.id}><b>{format.name}</b><small>{format.detail}</small>{state.format === format.id && <Check />}</button>)}</div>
+          <div className="control"><div><label htmlFor="bitrate">Audio bitrate</label><small>Higher bitrates preserve more detail.</small></div><select id="bitrate" value={state.bitrate} disabled={!OUTPUT_FORMATS.find((item) => item.id === state.format)?.lossy} onChange={(event) => state.setBitrate(event.target.value)}>{['96k','128k','192k','256k','320k'].map((rate) => <option key={rate}>{rate}</option>)}</select></div>
+          <div className="control"><div><label htmlFor="rate">Audio quality</label><small>Choose an output sample rate.</small></div><select id="rate" value={state.sampleRate} onChange={(event) => state.setSampleRate(event.target.value)}><option value="source">Match source</option><option value="44100">44.1 kHz</option><option value="48000">48 kHz</option><option value="96000">96 kHz</option></select></div>
+          <p className="hint">{['wav','flac'].includes(state.format) ? 'Lossless format; bitrate selection is not applied.' : 'Bitrate applies to MP3, AAC and OGG.'} Your source file is not modified.</p>
+          <button className="primary" disabled={!pending || state.isRunning} onClick={startBatch}>{state.isRunning ? <><LoaderCircle className="spin" /> Converting…</> : <><Sparkles /> Convert {pending} {pending === 1 ? 'file' : 'files'} <ArrowRight /></>}</button>
+          <p className="local-note"><LockKeyhole /> No account. No upload. No remote processing.</p>
+        </section>
+        <section className="engine"><div className="engine-top"><Activity /><span>● READY</span></div><label>LOCAL CONVERSION ENGINE</label><h3>Studio power.<br /><i>Device privacy.</i></h3><p>FFmpeg WebAssembly handles your audio and video locally without sending media to a server.</p><div><span><ShieldCheck /> Files stay local</span><span><Zap /> Batch workflow</span></div></section>
+        <section className="panel recent"><div className="queue-head"><b>Recent exports</b><Link to="/history">View all <ArrowRight /></Link></div>{state.history.slice(0, 3).map((item) => <div className="recent-row" key={item.id}><Music2 /><span>{item.name}<small>{formatBytes(item.size)} · {item.format.toUpperCase()}</small></span></div>)}{!state.history.length && <small>No exports yet. Completed files appear here.</small>}</section>
+      </aside>
+    </div>
+  </>;
+}
+
+function History() {
+  const state = useStudio();
+  const [busy, setBusy] = useState('');
+  const [notice, setNotice] = useState('');
+  async function save(item) {
+    setBusy(item.id);
+    try { const blob = await readOutput(item.id); if (!blob) throw new Error('This output is no longer available in local browser storage.'); download(blob, item.name); }
+    catch (error) { setNotice(error.message); }
+    finally { setBusy(''); }
+  }
+  async function remove(item) {
+    try { await deleteOutput(item.id); state.removeHistory(item.id); }
+    catch (error) { setNotice(error.message); }
+  }
+  async function clear() {
+    try { await clearOutputs(); state.clearHistory(); setNotice('Local conversion history cleared.'); }
+    catch (error) { setNotice(error.message); }
+  }
+  return <><Heading eyebrow="YOUR PRIVATE LIBRARY" title="Conversion history" description="Completed exports are stored in this browser, ready to download again."><span className="secure">{state.history.length} saved</span></Heading><Notice onClose={() => setNotice('')}>{notice}</Notice><section className="panel history"><div className="queue-head"><div><label>LOCAL EXPORTS</label><h2>Your files</h2></div>{state.history.length > 0 && <button className="text-btn" onClick={clear}><Trash2 /> Clear history</button>}</div>
+    {state.history.length ? state.history.map((item) => <article className="history-row" key={item.id}><FileAudio2 /><div><b>{item.name}</b><small>{item.sourceName ? `From ${item.sourceName} · ` : ''}{formatBytes(item.size)} · {dateLabel(item.date)}</small></div><strong>{item.format.toUpperCase()}</strong><button className="secondary" disabled={busy === item.id} onClick={() => save(item)}>{busy === item.id ? <LoaderCircle className="spin" /> : <ArrowDownToLine />} Download</button><button className="icon-btn" onClick={() => remove(item)} aria-label={`Delete ${item.name}`}><Trash2 /></button></article>) : <div className="empty"><Clock3 /><h3>Your history is empty</h3><p>Completed conversions appear here and stay available in this browser.</p><Link className="secondary" to="/"><Plus /> Start a conversion</Link></div>}
+  </section><p className="privacy-note"><ShieldCheck /> Browser cleanup or site-data deletion may remove saved exports. Download important files to keep a separate copy.</p></>;
+}
+function About() {
+  const items = [[ShieldCheck,'Private by default','Your selected media is processed in your browser using FFmpeg WebAssembly. Source files are never sent to a conversion server.'],[SlidersHorizontal,'Practical controls','Choose MP3, WAV, FLAC, AAC or OGG. Set a bitrate for lossy formats and a target sample rate.'],[HardDrive,'Local history','Completed output files are stored in IndexedDB on your device, ready to download again.']];
+  return <><Heading eyebrow="ABOUT THE STUDIO" title="Built around your files." description="A focused conversion workspace with privacy at its core."/><section className="panel about-hero"><AudioLines /><div><label>CONVERTA STUDIO</label><h2>Good tools should make<br /><i>the work feel simple.</i></h2><p>Choose a format, set your audio preferences and let your browser process the media locally.</p></div></section><div className="about-grid">{items.map(([Icon,title,body]) => <article className="panel" key={title}><Icon /><h3>{title}</h3><p>{body}</p></article>)}</div><section className="panel about-details"><h2>Transparent by design</h2><p><Check /> No account or social sign-in is included.</p><p><Check /> No media upload or server-side conversion endpoint is included.</p><p><Check /> A 300 MB per-file limit helps reduce browser memory pressure.</p><p><Check /> Browser site-data cleanup may remove saved conversions.</p></section></>;
+}
+function NotFound() { return <section className="panel empty"><b className="code">404</b><h2>That page is not here.</h2><p>The address may have changed or the page may not exist.</p><Link className="primary back" to="/">Back to studio <ArrowRight /></Link></section>; }
+export default function App() { return <Layout />; }
