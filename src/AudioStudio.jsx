@@ -160,6 +160,24 @@ export default function AudioStudio() {
     if (!sourceBuffer || busy) return;
     setBusy(true); setError(''); setNotice('');
     try {
+      const presetIsNatural = Object.keys(activePreset.settings || {}).length === 0;
+      const sourceIsUnchanged = Math.abs(Number(settings.trimStart) || 0) < 0.0001
+        && Math.abs((Number(settings.trimEnd) || sourceBuffer.duration) - sourceBuffer.duration) < 0.0001
+        && settings.cutStart == null && settings.cutEnd == null
+        && !settings.fadeIn && !settings.fadeOut
+        && Number(settings.gain) === 100 && Number(settings.speed) === 1 && Number(settings.pitch) === 0
+        && Number(settings.bass) === 0 && Number(settings.treble) === 0
+        && Number(settings.highpass) === 0 && Number(settings.lowpass) === 0
+        && Number(settings.distortion) === 0 && Number(settings.echo) === 0
+        && Number(settings.reverb) === 0 && Number(settings.chorus) === 0
+        && !settings.normalize && !settings.reverse && !settings.removeSilence
+        && !settings.mono && !settings.compress;
+      if (sourceIsUnchanged && presetIsNatural && !voiceovers.length) {
+        setPreviewBlob(selectedTrack.file);
+        setOutputName(selectedTrack.name);
+        setNotice('No processing was requested. The original source bytes are kept unchanged for preview and download.');
+        return;
+      }
       const processed=await processAudioBuffer(sourceBuffer,{...settings,voicePreset:activePreset.settings});
       let finalBuffer=processed;
       if (voiceovers.length) {
