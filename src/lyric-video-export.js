@@ -2,7 +2,7 @@ const WIDTH = 1280;
 const HEIGHT = 720;
 const FPS = 30;
 const VIDEO_BITRATE = 7_000_000;
-const AUDIO_BITRATE = 192_000;
+const AUDIO_BITRATE = 320_000;
 
 export const VIDEO_FORMATS = [
   {id:'mp4',label:'MP4',detail:'H.264 video · AAC audio',extension:'mp4'},
