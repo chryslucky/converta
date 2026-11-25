@@ -2,7 +2,8 @@
 
 A private, browser-based media conversion workspace. Converta converts audio files and extracts audio tracks from video using **FFmpeg WebAssembly**. Source media is processed in the browser and is never uploaded to a conversion server.
 
-**Live site:** https://chryslucky.github.io/converta/  
+**Vercel site:** https://convertapro-three.vercel.app/  
+**GitHub Pages site:** https://chryslucky.github.io/converta/  
 **Repository:** https://github.com/chryslucky/converta
 
 ## Features
@@ -18,7 +19,7 @@ A private, browser-based media conversion workspace. Converta converts audio fil
 
 ## Privacy and processing model
 
-The conversion engine runs client-side through FFmpeg WebAssembly. The FFmpeg JavaScript and WebAssembly runtime are served from this site's own GitHub Pages origin and loaded when conversion is first requested. Google Fonts and third-party CDN runtime loading are not required. Your selected source files and converted outputs are not sent to a Converta backend; no conversion backend exists in this project.
+The conversion engine runs client-side through FFmpeg WebAssembly. The FFmpeg JavaScript and WebAssembly runtime are served from the app's own deployment origin and loaded when conversion is first requested. Google Fonts and third-party CDN runtime loading are not required. Your selected source files and converted outputs are not sent to a Converta backend; no conversion backend exists in this project.
 
 The browser stores export blobs in IndexedDB and non-sensitive preferences/history metadata in local storage. Browser cleanup, private browsing policies, quota limits or clearing site data can remove that local library. Download important exports to a normal device folder.
 
@@ -39,7 +40,7 @@ npm install
 npm run dev
 ```
 
-Vite is configured with the production base path `/converta/`. For local development, open the URL Vite prints and append `/converta/` when required by the dev server.
+Open the local URL printed by Vite. Local development uses the domain-root base path `/`.
 
 ## Checks and production build
 
@@ -48,21 +49,25 @@ npm test
 npm run build
 # or run both together
 npm run check
-
 ```
 
-The prebuild script copies `@ffmpeg/core` s ESM JavaScript and WebAssembly runtime into `public/ffmpeg/`, so the built site does not depend on a third-party CDN for the conversion engine. Note that `@ffmpeg/core` is distributed under GPL_2.0-or-later; review that license and your distribution obligations before forking or redistributing the application.
+The prebuild script copies the `@ffmpeg/core` ESM JavaScript and WebAssembly runtime into `public/ffmpeg/`, so the built site does not depend on a third-party CDN for the conversion engine. Review upstream package licenses and distribution obligations before redistributing the application.
 
-## GitHub Pages deployment
+## Deployment targets
 
-The repository includes a GitHub Actions Pages deployment workflow. Pushing to `main` runs both the CI workflow and the Pages workflow. Pages uses the repository subpath `/converta/`, and `HashRouter` to keep the application routes compatible with static hosting. Before the first deployment, the repository Pages source must be set to **GitHub Actions** in Settings → Pages if Pages has not already been enabled. The connected GitHub write integration does not expose the repository Pages-settings mutation endpoint, so that account setting cannot be applied from this session.
+The Vite base path is selected for each deployment target:
 
-Workflow files:
+- Vercel serves the app at the domain root `/`.
+- GitHub Pages serves the repository site beneath `/converta/`.
+
+The GitHub Pages build runs in GitHub Actions, where `GITHUB_ACTIONS=true` selects the `/converta/` base path. Vercel builds use `/`. The app uses `HashRouter` so application routes work on both static hosting targets.
+
+The repository includes two workflows:
 
 - `.github/workflows/ci.yml` — installs dependencies, runs unit tests, and creates a production build.
 - `.github/workflows/pages.yml` — configures Pages, builds `dist/`, uploads the artifact, and deploys it.
 
-The Pages workflow uses the official `actions/configure-pages` action. If Pages is not already enabled for this repository, an administrator must set **Settings → Pages → Build and deployment → Source → GitHub Actions** once, then rerun the workflow.
+Before the first GitHub Pages deployment, the repository Pages source must be set to **GitHub Actions** in Settings → Pages if Pages has not already been enabled.
 
 ## Project structure
 
