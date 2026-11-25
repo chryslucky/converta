@@ -2,7 +2,7 @@ export const SITE_URL = 'https://convertapro.vercel.app';
 
 export const SEO_PAGES = [
   {
-    path: '/', title: 'Private Audio & Video Converter Online | Converta', description: 'Convert audio files and extract sound from video in your browser. Choose MP3, WAV, FLAC, AAC or OGG. Your media stays on your device.', heading: 'Convert media. Keep every file private.', eyebrow: 'CONVERTA STUDIO V4', kind: 'home', indexable: true,
+    path: '/', title: 'Private Audio & Video Converter Online | Converta', description: 'Convert audio files and extract sound from video in your browser. Choose MP3, WAV, FLAC, AAC or OGG. Your media stays on your device.', heading: 'Convert media. Keep every file private.', eyebrow: 'CONVERTA STUDIO V5', kind: 'home', indexable: true,
     intro: 'Converta is a private media conversion workspace. Turn common audio files into the format you need, or extract an audio track from a supported video file. Conversion runs in your browser with FFmpeg WebAssembly; your source media is not uploaded to a conversion server.',
     benefits: ['Local browser processing for supported files','Batch queue with per-file and overall progress','MP3, WAV, FLAC, AAC and OGG export options','Dated conversion records and locally stored downloads'],
     sections: [
@@ -17,7 +17,32 @@ export const SEO_PAGES = [
       ['Can I extract audio from a video?', 'Yes. Supported video containers can be used as sources when they contain an audio stream. The result is an audio file, not a converted video.'],
       ['Where is my conversion history stored?', 'Conversion records and output files are stored locally in your browser. They are not synchronized to a cloud account.']
     ],
-    related: ['/audio-converter/','/video-to-audio/','/guides/','/about/']
+    related: ['/audio-studio/','/audio-converter/','/video-to-audio/','/guides/','/about/']
+  },
+  {
+    path:'/audio-studio/',
+    title:'Audio Editor, Voice Effects & Lyrics Video Maker | Converta',
+    description:'Edit audio clips, mix songs and voiceovers, change pitch and tone, and create timed lyric videos with animated text, gradients and image backgrounds.',
+    heading:'Edit audio. Transform voices. Create lyric videos.',
+    eyebrow:'AUDIO PRODUCTION STUDIO',kind:'tool',indexable:true,
+    intro:'Converta Audio Studio is a local browser-based production workspace. Trim, cut, split, join and combine audio clips; shape tone and pitch with creative effects; record or import voiceovers; and produce synchronized lyric videos with individually timed captions and image backgrounds.',
+    benefits:['Audio editing and mixing with non-destructive source handling','32 creative voice profiles plus pitch, speed and tone controls','Import or record layered voiceovers with adjustable timing and gain','Timed lyric video editor with 10 images, 30 backgrounds, 30 gradients and 120 text animation presets'],
+    sections:[
+      {heading:'Edit and shape audio',body:'Load audio clips to trim their start and end, remove a selected range, split at a chosen time, reverse, fade, normalize peaks, remove quiet sections, change gain and speed, adjust bass and treble, filter frequencies, compress dynamics, and add distortion, echo, reverb or chorus. Exported edits are rendered as playable WAV audio.'},
+      {heading:'Change voice character and tone',body:'Choose from 32 creative signal-processing presets, including deep and bright adult voices, playful child-like pitch, robot, radio, telephone, monster, announcer and other effects. Adjust pitch and speed independently as controls, although this browser implementation changes duration as well as pitch. These are DSP effects, not neural voice cloning or natural gender conversion.'},
+      {heading:'Build a voiceover mix',body:'Import or record voiceover tracks, position them using start offsets, set their levels and mix them over a selected source track. Multiple audio clips can also be concatenated in order or combined as an overlay mix.'},
+      {heading:'Create a synchronized lyric video',body:'Choose a song, add text segments and set each segment’s start and end time in seconds. Style captions with font families, solid color or animated gradient fills, shadows and outlines. Choose animated backgrounds, assign up to ten uploaded still images, and select from 120 parameterized text animation presets. The browser records the canvas with the soundtrack; available video format depends on browser MediaRecorder support.'},
+      {heading:'Local processing and export limits',body:'Audio decoding, editing, mixing and lyric-video rendering happen locally in the browser. Edited audio exports use PCM WAV. Lyric videos export as WebM in most browsers, or MP4 only where the browser provides a compatible MediaRecorder encoder. Keep the tab active while rendering long videos and download important outputs to your device.'}
+    ],
+    steps:['Open Audio Studio and import one or more audio files.','Choose Editor, Voice Lab, or Voiceovers & Mix and configure the controls.','Preview the processed audio, then download the WAV export.','For lyrics video, upload a song, add timed captions, style them, optionally upload up to ten images, then render and download the video.'],
+    faqs:[
+      ['Can I play and download audio exports?','Yes. Rendered audio appears in a built-in player and can be downloaded as a WAV file. Main converter results also have playback controls and a download action.'],
+      ['Does a child or robot voice preset use AI cloning?','No. Voice presets use browser audio processing effects. They do not generate or clone a real person’s voice.'],
+      ['Can I change pitch without changing song duration?','The current browser effect changes pitch through playback-rate processing, so pitch changes also affect duration.'],
+      ['Which video format can I export?','The editor checks browser MediaRecorder support. WebM is the typical output; MP4 is available only when the browser exposes a compatible MP4 recorder.'],
+      ['Can I synchronize every lyric line?','Yes. Each caption has editable start and end times in seconds, and can be assigned an image and a text animation preset.']
+    ],
+    related:['/audio-converter/','/video-to-audio/','/guides/']
   },
   {
     path:'/audio-converter/',title:'Online Audio Converter – MP3, WAV, FLAC, AAC & OGG | Converta',description:'Convert common audio files to MP3, WAV, FLAC, AAC or OGG in your browser. Adjust bitrate and sample rate with local file processing.',heading:'Audio conversion, with precise controls.',eyebrow:'AUDIO CONVERTER',kind:'tool',indexable:true,format:'mp3',
