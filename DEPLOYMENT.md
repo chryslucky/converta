@@ -29,11 +29,11 @@ After deployment, verify:
 - A completed conversion has an in-app audio player and download action in both the queue and history.
 - Audio Studio can decode a supported audio file, apply effects, play the WAV render and download it.
 - Voiceover recording/import and clip mixing work on a supported browser with microphone permission granted.
-- Lyric video preview tracks the song playhead; rendering includes the soundtrack and text overlays. Output container support depends on MediaRecorder in the current browser.
+- Lyric video preview tracks the song playhead; rendering includes the soundtrack and text overlays. Export runs through Mediabunny and WebCodecs, with MP4 as the default when H.264 and AAC encoding are available. The interface capability-checks the device and offers MOV, WebM, MKV or MPEG-TS alternatives where supported.
 
 ## Browser processing and output formats
 
-FFmpeg WebAssembly handles conversions to MP3, WAV, FLAC, AAC and OGG. Audio Studio's Web Audio pipeline renders edited audio as PCM WAV. The lyric-video exporter uses canvas capture and MediaRecorder, typically WebM; MP4 is available only on browsers that provide a supported MP4 recorder.
+FFmpeg WebAssembly handles conversions to MP3, WAV, FLAC, AAC and OGG. Audio Studio's Web Audio pipeline renders edited audio as PCM WAV. The lyric-video exporter renders canvas frames with Mediabunny and encodes/muxes them through WebCodecs. MP4 (H.264 + AAC) is the default when encoders are available; MOV, WebM, MKV and MPEG-TS are selectable alternatives based on actual device codec support. The AAC extension supplies an open-source AAC-LC encoder where browser-native AAC encoding is missing.
 
 Audio Studio voice effects are DSP presets, not AI voice cloning. Pitch shifting changes playback rate and therefore also changes duration. Keep the page active for full-length video rendering.
 

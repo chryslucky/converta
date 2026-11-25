@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import AudioPlayerModal from './AudioPlayerModal.jsx';
+import { detectVideoExportFormats, renderLyricVideoFile } from './lyric-video-export.js';
 import {
   Activity, AudioLines, AudioWaveform, Check, ChevronDown, CircleHelp, Clapperboard,
   Download, FileAudio2, Film, Headphones, ImagePlus, Layers, Mic, Pause, Play, Plus,
@@ -94,7 +96,6 @@ export default function AudioStudio() {
   const [previewBlob,setPreviewBlob] = useState(null);
   const [previewUrl,setPreviewUrl] = useState('');
   const [outputName,setOutputName] = useState('');
-  const audioRef = useRef(null);
   const micRef = useRef(null);
   const [recording,setRecording] = useState(false);
 
@@ -241,10 +242,34 @@ export default function AudioStudio() {
   const [videoURL,setVideoURL]=useState('');
   const [videoFileName,setVideoFileName]=useState('');
   const [videoFormat,setVideoFormat]=useState('');
-  const lyricsAudioRef=useRef(null);
+  const [exportFormatSelection,setExportFormatSelection]=useState('mp4');
+  const [exportFormats,setExportFormats]=useState([]);
+  const [formatCapability,setFormatCapability]=useState('idle');
+  const [formatCapabilityNote,setFormatCapabilityNote]=useState('');
+  const [renderProgress,setRenderProgress]=useState(0);
+  const [renderProgressLabel,setRenderProgressLabel]=useState('');
   const videoCanvasRef=useRef(null);
   const imageObjectsRef=useRef([]);
   const [imageVersion,setImageVersion]=useState(0);
+
+  useEffect(()=>{
+    if (tab!=='lyrics' || formatCapability!=='idle') return;
+    setFormatCapability('checking');
+    detectVideoExportFormats().then((result)=>{
+      setExportFormats(result.formats);
+      const mp4=result.formats.find((format)=>format.id==='mp4'&&format.available);
+      const firstAvailable=result.formats.find((format)=>format.available);
+      if(mp4) setExportFormatSelection('mp4');
+      else if(firstAvailable){
+        setExportFormatSelection(firstAvailable.id);
+        setFormatCapabilityNote('MP4/H.264 is not available on this device. '+firstAvailable.label+' is selected as the compatible option.');
+      } else setFormatCapabilityNote('This browser has no compatible video encoder for the offered formats. Try a recent Chrome, Edge, Safari or Firefox version with WebCodecs enabled.');
+      setFormatCapability('ready');
+    }).catch((failure)=>{
+      setFormatCapability('error');
+      setFormatCapabilityNote(failure?.message||'Video encoder capabilities could not be checked.');
+    });
+  },[tab,formatCapability]);
 
   useEffect(()=>{
     if (!lyricsFile) { setLyricsAudioURL(''); return; }
@@ -296,53 +321,29 @@ export default function AudioStudio() {
 
   async function renderLyricVideo() {
     if (!lyricsFile || !lines.length || videoBusy) return;
-    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) { setError('This browser does not support canvas video recording. Use a current desktop Chrome or Edge browser.'); return; }
-    setVideoBusy(true); setError(''); setNotice('');
-    let context;
-    let recorder;
+    const selectedFormat=exportFormats.find((format)=>format.id===exportFormatSelection&&format.available);
+    if(!selectedFormat){setError('Choose a video format supported by this device.');return;}
+    setVideoBusy(true); setError(''); setNotice(''); setRenderProgress(0); setRenderProgressLabel('Decoding soundtrack…');
     try {
-      const bytes=await lyricsFile.arrayBuffer();
-      context=new (window.AudioContext||window.webkitAudioContext)();
-      const audio=await context.decodeAudioData(bytes.slice(0));
-      await context.resume();
+      const audio=await decodeAudioFile(lyricsFile);
       const canvas=document.createElement('canvas'); canvas.width=1280; canvas.height=720;
-      const ctx=canvas.getContext('2d');
-      const canvasStream=canvas.captureStream(30);
-      const audioDestination=context.createMediaStreamDestination();
-      const source=context.createBufferSource(); source.buffer=audio;
-      source.connect(audioDestination);
-      const combined=new MediaStream([...canvasStream.getVideoTracks(),...audioDestination.stream.getAudioTracks()]);
-      const mimeTypes=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
-      const supported=mimeTypes.find((mime)=>MediaRecorder.isTypeSupported(mime))||'';
-      if (!supported) throw new Error('No supported video recording format was found in this browser.');
-      recorder=new MediaRecorder(combined,{mimeType:supported,videoBitsPerSecond:6500000,audioBitsPerSecond:192000});
-      const chunks=[];
-      recorder.ondataavailable=(event)=>{if(event.data.size)chunks.push(event.data);};
-      const complete=new Promise((resolve,reject)=>{
-        recorder.onstop=()=>resolve(new Blob(chunks,{type:recorder.mimeType||'video/webm'}));
-        recorder.onerror=()=>reject(new Error('The browser video recorder stopped unexpectedly.'));
+      const result=await renderLyricVideoFile({
+        audioBuffer:audio,
+        canvas,
+        lines,
+        design,
+        images:imageObjectsRef.current,
+        formatId:exportFormatSelection,
+        drawFrame:drawLyricFrame,
+        onProgress:({percent,label})=>{setRenderProgress(percent);setRenderProgressLabel(label);}
       });
-      recorder.start(250);
-      const started=context.currentTime;
-      const renderFrame=()=>{
-        const time=clamp(context.currentTime-started,0,audio.duration);
-        drawLyricFrame(ctx,1280,720,time,lines,design,imageObjectsRef.current);
-        if (recorder.state==='recording' && time<audio.duration) requestAnimationFrame(renderFrame);
-      };
-      drawLyricFrame(ctx,1280,720,0,lines,design,imageObjectsRef.current);
-      requestAnimationFrame(renderFrame);
-      source.onended=()=>{if(recorder.state==='recording')recorder.stop();};
-      source.start(0);
-      window.setTimeout(()=>{if(recorder.state==='recording')recorder.stop();},Math.ceil((audio.duration+0.5)*1000));
-      const blob=await complete;
-      setVideoBlob(blob);
-      const extension=blob.type.includes('mp4')?'mp4':'webm';
+      setVideoBlob(result.blob);
+      const extension=result.format.extension;
       const name=(lyricsFile.name.replace(/\.[^.]+$/,'')||'lyrics-video')+'-lyrics.'+extension;
-      setVideoFileName(name); setVideoFormat(extension.toUpperCase());
-      setNotice('Lyric video rendered with its audio track. Preview or download the video below.');
-      combined.getTracks().forEach((track)=>track.stop());
+      setVideoFileName(name); setVideoFormat(result.format.label+' · '+extension.toUpperCase());
+      setNotice('Your '+result.format.label+' lyric video is ready to preview and download.');
     } catch(e) { setError(e.message||'The lyrics video could not be rendered.'); }
-    finally { if(context) await context.close().catch(()=>undefined); setVideoBusy(false); }
+    finally { setVideoBusy(false); }
   }
 
   return <div className="audio-studio">
@@ -459,7 +460,7 @@ export default function AudioStudio() {
 
       {previewUrl&&<section className="audio-panel audio-export-panel">
         <div className="audio-panel-heading"><div><small>EXPORT READY</small><h2>Processed audio output</h2></div><span className="audio-export-status"><Check/> READY</span></div>
-        <audio ref={audioRef} className="audio-player" src={previewUrl} controls preload="metadata"/>
+        <AudioPlayerModal src={previewUrl} title={outputName} subtitle="PROCESSED AUDIO EXPORT" buttonLabel="Open audio player"/>
         <div className="audio-export-bottom"><div><b>{outputName}</b><small>{(previewBlob.size/1048576).toFixed(2)} MB · WAV PCM · playable preview</small></div><button onClick={()=>downloadBlob(previewBlob,outputName)}><Download/> Download WAV</button></div>
       </section>}
     </div>}
@@ -469,7 +470,7 @@ export default function AudioStudio() {
         <div className="audio-panel lyrics-source-panel">
           <div className="audio-panel-heading"><div><small>01 · SOUNDTRACK</small><h2>Choose your song</h2></div><AudioLines/></div>
           <label className="audio-upload-button"><Upload/><span>{lyricsFile?lyricsFile.name:'Upload song or audio file'}</span><input type="file" accept="audio/*,.flac,.m4a,.webm" onChange={(e)=>importLyricsAudio(e.target.files?.[0])}/></label>
-          {lyricsAudioURL&&<audio className="audio-player" src={lyricsAudioURL} controls ref={lyricsAudioRef} onTimeUpdate={(e)=>setCurrentTime(e.currentTarget.currentTime)}/>}
+          {lyricsAudioURL&&<AudioPlayerModal src={lyricsAudioURL} title={lyricsFile?.name||'Song soundtrack'} subtitle="LYRIC VIDEO SOUNDTRACK" buttonLabel="Open song player" onTimeUpdate={setCurrentTime}/>} 
           <div className="lyrics-time-display"><span>PLAYHEAD</span><b>{seconds(currentTime)}</b></div>
           <div className="lyrics-images-header"><div><b>Background image library</b><small>Upload up to 10 still images</small></div><label className="image-add-button"><ImagePlus/><input type="file" accept="image/*" multiple onChange={(e)=>{importImages(e.target.files);e.target.value='';}}/> Add images</label></div>
           <div className="lyrics-image-grid">{images.map((image,index)=><div key={index}><span>{String(index+1).padStart(2,'0')}</span><b>{image.name}</b><button onClick={()=>setImages((old)=>old.filter((_,i)=>i!==index))} aria-label="Remove image"><X/></button></div>)}
@@ -508,8 +509,15 @@ export default function AudioStudio() {
           <div className="audio-toggle-grid"><Toggle label="Animated gradient text" value={design.useGradient} onChange={(v)=>setDesign((old)=>({...old,useGradient:v}))}/><Toggle label="Text shadow" value={design.shadow} onChange={(v)=>setDesign((old)=>({...old,shadow:v}))}/><Toggle label="Text outline" value={design.outline} onChange={(v)=>setDesign((old)=>({...old,outline:v}))}/></div>
           <button className="audio-secondary-action" onClick={()=>setLines((old)=>old.map((line)=>({...line,font:design.font,fontSize:design.fontSize,color:design.color,gradientIndex:design.gradientIndex,animationIndex:design.animationIndex})))} disabled={!lines.length}>Apply style to all captions</button>
           <div className="lyrics-count-row"><span><b>{FONTS.length}</b> font families</span><span><b>{GRADIENTS.length}</b> gradients</span><span><b>{BACKGROUNDS.length}</b> backgrounds</span><span><b>{ANIMATIONS.length}</b> text animation presets</span></div>
-          <button className="audio-primary-action full" onClick={renderLyricVideo} disabled={!lyricsFile||!lines.length||videoBusy}>{videoBusy?'Rendering full video…':<><Video/> Render lyric video with soundtrack</>}</button>
-          <p className="lyrics-export-note">Exports a synchronized WebM video with the uploaded audio track. Rendering happens locally in your browser; keep this tab active until it finishes.</p>
+          <label className="lyrics-field-label video-format-select">Export format<select value={exportFormatSelection} onChange={(event)=>setExportFormatSelection(event.target.value)} disabled={videoBusy||formatCapability!=='ready'}>
+            {exportFormats.map((format)=><option key={format.id} value={format.id} disabled={!format.available}>{format.label} · {format.extension.toUpperCase()}{format.available?'':' · unavailable on this device'}</option>)}
+          </select></label>
+          {formatCapability==='checking'&&<div className="video-capability-note">Checking MP4 and alternative encoder support on this device…</div>}
+          {formatCapability==='error'&&<div className="video-capability-note warning">{formatCapabilityNote}</div>}
+          {formatCapability==='ready'&&formatCapabilityNote&&<div className="video-capability-note">{formatCapabilityNote}</div>}
+          {videoBusy&&<div className="video-render-status"><div className="video-render-status-top"><span>{renderProgressLabel||'Rendering video'}</span><b>{renderProgress}%</b></div><div className="video-render-progress"><i style={{width:renderProgress+'%'}}/></div><small>Rendering locally · 1280 × 720 · 30 FPS</small></div>}
+          <button className="audio-primary-action full" onClick={renderLyricVideo} disabled={!lyricsFile||!lines.length||videoBusy||formatCapability!=='ready'||!exportFormats.some((format)=>format.id===exportFormatSelection&&format.available)}>{videoBusy?'Encoding '+exportFormatSelection.toUpperCase()+'…':<><Video/> Render {exportFormatSelection.toUpperCase()} lyric video</>}</button>
+          <p className="lyrics-export-note">MP4 is the default. Encoding uses the open-source Mediabunny media pipeline and available WebCodecs encoders; AAC can be supplied by its open-source encoder extension. Format availability depends on this browser and device. Rendering is local and may use substantial memory for long songs.</p>
         </section>
       </div>
       {videoURL&&<section className="audio-panel lyric-video-export">
@@ -519,7 +527,7 @@ export default function AudioStudio() {
       </section>}
     </section>}
 
-    <footer className="audio-studio-footnote"><CircleHelp/><span>Audio editing, voice filters and lyric-video rendering are executed locally. Browser codec support varies; WAV and WebM are the reliable export paths. Pitch shifting changes playback duration as well as pitch, and this version uses creative DSP profiles rather than neural voice conversion.</span></footer>
+    <footer className="audio-studio-footnote"><CircleHelp/><span>Audio editing, voice filters and video encoding run locally. MP4 (H.264 + AAC) is the default when the device supports it; MOV, WebM, MKV and MPEG-TS are offered when compatible encoders are available. Audio edits export as WAV. Pitch shifting changes playback duration as well as pitch, and voice presets are creative DSP effects rather than neural voice conversion.</span></footer>
   </div>;
 }
 
