@@ -2,7 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  base: '/converta/',
+  // GitHub Pages hosts this project under /converta/; Vercel serves it at the domain root.
+  base: process.env.GITHUB_ACTIONS === 'true' ? '/converta/' : '/',
   plugins: [react()],
   build: {
     target: 'es2022',
