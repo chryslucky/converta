@@ -22,15 +22,15 @@ const VOICES = [
   ['Android · digital',{pitch:2,robot:0.65,chorus:0.35,highpass:140}],['Alien · space',{pitch:7,robot:0.5,echo:0.25}],['Giant · cinematic',{pitch:-7,speed:0.88,reverb:0.28}],
   ['Tiny · squeaky',{pitch:9,speed:1.16}],['Chipmunk',{pitch:8,speed:1.22,treble:4}],['Monster · growl',{pitch:-9,distortion:22,bass:7,lowpass:6000}],
   ['Demon · dark',{pitch:-6,distortion:30,reverb:0.35,lowpass:5000}],['Whisper · airy',{pitch:1,highpass:250,treble:7,gain:75}],
-  ['Radio presenter',{highpass:380,lowpass:3400,distortion:8,compress:false}],['Telephone',{highpass:480,lowpass:2800,distortion:14}],
-  ['Megaphone',{highpass:300,lowpass:4200,distortion:25,compress:false}],['Announcer',{pitch:-1,bass:3,compress:false,reverb:0.12}],
+  ['Radio presenter',{highpass:380,lowpass:3400,distortion:8,compress:true}],['Telephone',{highpass:480,lowpass:2800,distortion:14}],
+  ['Megaphone',{highpass:300,lowpass:4200,distortion:25,compress:true}],['Announcer',{pitch:-1,bass:3,compress:true,reverb:0.12}],
   ['Cartoon',{pitch:5,chorus:0.45,echo:0.12}],['Vintage tape',{pitch:-1,lowpass:7500,distortion:10,chorus:0.18}],
   ['Underwater',{pitch:-2,lowpass:850,reverb:0.4}],['Cave echo',{reverb:0.85,echo:0.48}],['Space radio',{robot:0.5,echo:0.35,highpass:180}],
   ['Synth voice',{robot:0.72,chorus:0.55,distortion:16}],['Retro game',{pitch:7,robot:0.5,distortion:20}],
-  ['Dreamy',{pitch:1,reverb:0.65,chorus:0.4}],['Warm narrator',{pitch:-2,bass:4,treble:1,compress:false}],
-  ['Broadcast FM',{highpass:90,lowpass:11000,compress:false,chorus:0.12}],['Dark villain',{pitch:-5,bass:5,lowpass:6200,reverb:0.22}],
+  ['Dreamy',{pitch:1,reverb:0.65,chorus:0.4}],['Warm narrator',{pitch:-2,bass:4,treble:1,compress:true}],
+  ['Broadcast FM',{highpass:90,lowpass:11000,compress:true,chorus:0.12}],['Dark villain',{pitch:-5,bass:5,lowpass:6200,reverb:0.22}],
   ['Bright mascot',{pitch:4,treble:6,chorus:0.22}],['Glitch voice',{robot:0.8,distortion:36,echo:0.2}],
-  ['Large hall',{reverb:0.95,echo:0.18}],['Close studio',{highpass:60,lowpass:15000,compress:false}]
+  ['Large hall',{reverb:0.95,echo:0.18}],['Close studio',{highpass:60,lowpass:15000,compress:true}]
 ].map(([name, settings]) => ({name, settings}));
 
 const FONTS = [
