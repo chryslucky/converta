@@ -531,6 +531,7 @@ function Toggle({label,value,onChange}) {
 }
 
 function drawLyricFrame(ctx,width,height,time,lines,design,loadedImages) {
+  const line=lines.find((item)=>time>=item.start&&time<=item.end);
   const gradient=GRADIENTS[(line?.gradientIndex ?? design.gradientIndex)]||GRADIENTS[0];
   const hue=(design.backgroundIndex*29+time*12)%360;
   const background=ctx.createLinearGradient(Math.cos(time*.18)*width,0,width,Math.sin(time*.13)*height);
@@ -538,7 +539,6 @@ function drawLyricFrame(ctx,width,height,time,lines,design,loadedImages) {
   background.addColorStop(.55,'hsl('+((hue+65)%360)+' 68% 20%)');
   background.addColorStop(1,'hsl('+((hue+150)%360)+' 70% 10%)');
   ctx.fillStyle=background; ctx.fillRect(0,0,width,height);
-  const line=lines.find((item)=>time>=item.start&&time<=item.end);
   const imageIndex=line?.backgroundImage??design.backgroundImage;
   const image=imageIndex>=0?loadedImages[imageIndex]?.image:null;
   if(image) {
