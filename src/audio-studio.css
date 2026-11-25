@@ -28,3 +28,90 @@
   .audio-studio .audio-panel,.audio-studio .audio-studio-hero,.audio-studio .audio-tabs{animation:none!important}
   .audio-studio .audio-track-row,.audio-studio .voice-preset-grid button{transition:none!important}
 }
+
+
+/* Synchronized lyric-video preview transport */
+.lyrics-audio-element{display:none!important}
+.lyrics-soundtrack-status{display:flex;align-items:center;gap:10px;padding:11px;margin:12px 0;border:1px solid #e1eee5;border-radius:9px;background:#f7fbf8}
+.lyrics-soundtrack-status>span{width:32px;height:32px;display:grid;place-items:center;border-radius:9px;background:#e8f4eb;color:#39865b;flex-shrink:0}
+.lyrics-soundtrack-status svg{width:15px}
+.lyrics-soundtrack-status>div{display:grid;gap:4px;min-width:0}
+.lyrics-soundtrack-status b{font-size:9px;color:#456b56}
+.lyrics-soundtrack-status small{font-size:8px;color:#8da19a;line-height:1.5}
+.lyrics-preview-stage{position:relative;overflow:hidden;border-radius:10px;background:#081b25;isolation:isolate}
+.lyrics-preview-stage:after{content:"";position:absolute;inset:0;pointer-events:none;border:1px solid rgba(255,255,255,.08);border-radius:inherit}
+.lyrics-preview-stage .lyrics-preview-canvas{border-radius:0}
+.lyrics-preview-fullscreen{position:absolute;right:12px;top:12px;z-index:2;width:34px;height:34px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.2);border-radius:9px;background:rgba(4,18,25,.62);color:#fff;backdrop-filter:blur(12px);cursor:pointer;transition:background .18s,transform .18s}
+.lyrics-preview-fullscreen:hover{background:rgba(4,18,25,.88);transform:translateY(-1px)}
+.lyrics-preview-fullscreen svg{width:15px;height:15px}
+.lyrics-preview-panel:fullscreen{width:100vw;height:100vh;max-width:none;max-height:none;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:clamp(18px,4vw,48px);overflow:auto;border:0;border-radius:0;background:#081a24}
+.lyrics-preview-panel:fullscreen .audio-panel-heading{width:min(100%,1280px);margin:0 auto;color:#e7f2eb}
+.lyrics-preview-panel:fullscreen .audio-panel-heading h2{color:#edf8f1}
+.lyrics-preview-panel:fullscreen .audio-panel-heading small{color:#a0c4b0}
+.lyrics-preview-panel:fullscreen .preview-live-dot{color:#a4d9b8!important}
+.lyrics-preview-panel:fullscreen .lyrics-preview-stage{width:min(100%,1280px);max-height:calc(100vh - 220px);margin:0 auto;box-shadow:0 24px 90px rgba(0,0,0,.35)}
+.lyrics-preview-panel:fullscreen .lyrics-preview-canvas{width:100%;height:auto;max-height:calc(100vh - 220px);object-fit:contain}
+.lyrics-preview-panel:fullscreen .lyrics-transport{width:min(100%,1280px);margin:0 auto;border-color:rgba(214,237,223,.18);background:#102b36}
+.lyrics-preview-panel:fullscreen .lyrics-preview-foot{width:min(100%,1280px);margin:0 auto;color:#b1c9bd}
+.lyrics-preview-panel:fullscreen .lyrics-preview-foot span:first-child{color:#e7f2eb}
+.lyrics-transport{display:grid;gap:10px;margin-top:12px;padding:12px;border:1px solid #e4ede7;border-radius:11px;background:linear-gradient(180deg,#fcfdfc,#f6faf7)}
+.lyrics-transport-main{display:flex;align-items:center;gap:10px;min-width:0}
+.lyrics-transport-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.lyrics-transport button{cursor:pointer}
+.lyrics-transport button:disabled{opacity:.38;cursor:not-allowed}
+.lyrics-transport-actions button,.lyrics-loop-toggle,.lyrics-volume-control>button{border:0;background:transparent;color:#668078}
+.lyrics-transport-jump{height:34px;display:flex;align-items:center;justify-content:center;gap:3px;padding:0 5px;border-radius:7px;font-size:8px;font-weight:800}
+.lyrics-transport-jump:hover:not(:disabled),.lyrics-transport-frame:hover:not(:disabled),.lyrics-loop-toggle:hover:not(:disabled),.lyrics-volume-control>button:hover:not(:disabled){background:#e8f2eb;color:#287a50}
+.lyrics-transport-jump svg{width:14px;height:14px}
+.lyrics-transport-frame{width:29px;height:32px;display:grid;place-items:center;border-radius:7px}
+.lyrics-transport-frame svg{width:16px;height:16px}
+.lyrics-transport-play{width:40px;height:40px;display:grid;place-items:center;border:0;border-radius:50%;background:linear-gradient(145deg,#2e9660,#1e7048);color:#fff!important;box-shadow:0 5px 13px rgba(34,121,76,.22);transition:transform .16s,box-shadow .16s}
+.lyrics-transport-play:hover:not(:disabled){transform:scale(1.06);box-shadow:0 7px 18px rgba(34,121,76,.3)}
+.lyrics-transport-play svg{width:17px;height:17px}
+.lyrics-transport-readout{display:flex;align-items:center;gap:6px;margin-left:auto;white-space:nowrap;color:#92a49a;font-size:9px;font-variant-numeric:tabular-nums}
+.lyrics-transport-readout b{color:#3b7653;font-size:10px;letter-spacing:.3px}
+.lyrics-loop-toggle{width:32px;height:32px;display:grid;place-items:center;flex-shrink:0;border-radius:7px}
+.lyrics-loop-toggle svg{width:15px;height:15px}
+.lyrics-loop-toggle.active{background:#e3f2e7;color:#278052}
+.lyrics-rate-control{display:flex;align-items:center;gap:5px;flex-shrink:0;color:#91a19a;font-size:8px}
+.lyrics-rate-control select{height:31px;max-width:66px;padding:0 5px;border:1px solid #e0eae3;border-radius:7px;background:#fff;color:#547467;font-size:9px;font-weight:750}
+.lyrics-transport-seek{display:flex;align-items:center;min-width:0}
+.lyrics-transport-seek input{display:block;width:100%;height:6px;margin:0;border:0;border-radius:10px;appearance:none;-webkit-appearance:none;background:linear-gradient(to right,#348e5d 0 var(--seek-progress,0%),#dce9e1 var(--seek-progress,0%) 100%);cursor:pointer}
+.lyrics-transport-seek input::-webkit-slider-thumb{width:13px;height:13px;border:2px solid #fff;border-radius:50%;appearance:none;-webkit-appearance:none;background:#287c50;box-shadow:0 1px 5px rgba(21,77,47,.28)}
+.lyrics-transport-seek input::-moz-range-thumb{width:10px;height:10px;border:2px solid #fff;border-radius:50%;background:#287c50;box-shadow:0 1px 5px rgba(21,77,47,.28)}
+.lyrics-transport-seek input:disabled{opacity:.42;cursor:not-allowed}
+.lyrics-transport-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.lyrics-volume-control{display:flex;align-items:center;gap:7px;min-width:0}
+.lyrics-volume-control>button{width:26px;height:26px;display:grid;place-items:center;border-radius:6px;flex-shrink:0}
+.lyrics-volume-control>button svg{width:15px;height:15px}
+.lyrics-volume-control input{width:82px;max-width:20vw;height:4px;accent-color:#34885a;cursor:pointer}
+.lyrics-volume-control input:disabled{opacity:.4;cursor:not-allowed}
+.lyrics-volume-control>span{min-width:34px;color:#82968b;font-size:8px;font-variant-numeric:tabular-nums}
+.lyrics-frame-hint{display:flex;align-items:center;gap:6px;color:#9aa9a1;font-size:8px;text-align:right}
+.lyrics-frame-hint svg{width:13px;height:13px;flex-shrink:0}
+.lyric-preview-segment{display:flex;align-items:center;gap:4px;margin-left:auto;padding:5px 8px;border:1px solid #dcebe1;border-radius:7px;background:#f4faf5;color:#38845a;font-size:8px;font-weight:800}
+.lyric-preview-segment svg{width:11px;height:11px;fill:currentColor}
+.lyric-preview-segment:disabled{opacity:.42;cursor:not-allowed}
+.lyric-review-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.lyric-review-actions button{min-height:27px;padding:0 8px;border:1px solid #e3ece6;border-radius:6px;background:#fbfdfb;color:#718a7d;font-size:7px;font-weight:750}
+.lyric-review-actions button:hover:not(:disabled){border-color:#b8d9c2;background:#f0f8f2;color:#347c53}
+.lyric-review-actions button:disabled{opacity:.42;cursor:not-allowed}
+@media(max-width:700px){
+  .lyrics-transport{padding:9px;gap:9px}
+  .lyrics-transport-main{flex-wrap:wrap;gap:6px}
+  .lyrics-transport-actions{gap:1px}
+  .lyrics-transport-jump{padding:0 3px}
+  .lyrics-transport-play{width:37px;height:37px}
+  .lyrics-transport-readout{margin-left:auto;font-size:8px}
+  .lyrics-rate-control{margin-left:auto}
+  .lyrics-transport-footer{align-items:flex-start;flex-direction:column;gap:8px}
+  .lyrics-volume-control input{width:100px;max-width:36vw}
+  .lyrics-frame-hint{font-size:7px;text-align:left}
+  .lyrics-soundtrack-status small{font-size:7px}
+  .lyrics-preview-panel:fullscreen{padding:12px}
+  .lyrics-preview-panel:fullscreen .lyrics-preview-stage{max-height:calc(100vh - 230px)}
+  .lyrics-preview-panel:fullscreen .lyrics-preview-canvas{max-height:calc(100vh - 230px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .lyrics-preview-fullscreen,.lyrics-transport-play{transition:none}
+}
