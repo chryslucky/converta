@@ -7,7 +7,7 @@ import {
   Activity, ArrowDownToLine, ArrowRight, AudioLines, AudioWaveform, BadgeCheck, BookOpen,
   Check, CheckCircle2, ChevronDown, CircleHelp, Clock3, Command, Download, FileAudio2,
   FileVideo2, Files, Filter, FolderOpen, Gauge, HardDrive, Headphones, History as HistoryIcon,
-  Info, ListFilter, LoaderCircle, LockKeyhole, Menu, Music2, Pause, Play, Plus, Search,
+  Info, LayoutDashboard, ListFilter, LoaderCircle, LockKeyhole, Menu, Music2, Pause, Play, Plus, Search,
   PanelLeftClose, PanelLeftOpen, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, Upload, UploadCloud, X,
   XCircle, Zap
 } from 'lucide-react';
@@ -163,7 +163,7 @@ function Sidebar({mobileOpen, onMobileClose}) {
     <div className="sidebar-bottom"><span>CONVERTA STUDIO</span><b>VERSION 5.1</b></div>
   </aside>;
 }
-function LayersIcon() { return <Command />; }
+function LayersIcon() { return <LayoutDashboard />; }
 
 function SearchBox() {
   const [query,setQuery] = useState('');
@@ -217,7 +217,7 @@ function Topbar({mobileOpen, onMenuToggle}) {
       <Link to="/history/" className="topbar-history"><Clock3 /> History</Link>
     </div>
     <button type="button" className="mobile-menu" aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'}
-      aria-expanded={mobileOpen} onClick={onMenuToggle}><Menu /></button>
+      aria-expanded={mobileOpen} onClick={onMenuToggle}>{mobileOpen ? <X /> : <Menu />}</button>
   </header>;
 }
 function Footer() {
