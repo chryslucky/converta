@@ -40,7 +40,7 @@
 .sidebar-bottom{flex-shrink:0}
 .sidebar-backdrop{display:none}
 .sidebar.is-collapsed{width:78px;padding:22px 10px 16px}
-.sidebar.is-collapsed .sidebar-brand-row{justify-content:center;min-height:42px;position:relative}
+.sidebar.is-collapsed .sidebar-brand-row{justify-content:space-between;min-height:42px}
 .sidebar.is-collapsed .brand{width:auto}
 .sidebar.is-collapsed .brand-word,
 .sidebar.is-collapsed .sidebar-label,
@@ -49,8 +49,9 @@
 .sidebar.is-collapsed .privacy-card>p,
 .sidebar.is-collapsed .privacy-status,
 .sidebar.is-collapsed .sidebar-bottom span{display:none}
-.sidebar.is-collapsed .sidebar-controls{position:absolute;right:-3px;top:0}
-.sidebar.is-collapsed .sidebar-collapse-toggle{width:25px;height:25px;background:#19394b}
+.sidebar.is-collapsed .brand-mark{width:34px;height:34px;flex:0 0 34px}
+.sidebar.is-collapsed .sidebar-controls{position:static}
+.sidebar.is-collapsed .sidebar-collapse-toggle{width:23px;height:23px;background:#19394b}
 .sidebar.is-collapsed .sidebar-collapse-toggle svg{width:14px;height:14px}
 .sidebar.is-collapsed .sidebar-section{margin-top:29px}
 .sidebar.is-collapsed .sidebar-label{display:none}
@@ -139,6 +140,7 @@
   .sidebar.is-collapsed .privacy-status,
   .sidebar.is-collapsed .sidebar-bottom span{display:initial}
   .sidebar.is-collapsed .brand{width:max-content}
+  .sidebar.is-collapsed .brand-mark{width:38px;height:38px;flex-basis:38px}
   .sidebar.is-collapsed .sidebar-controls{position:static}
   .sidebar.is-collapsed .sidebar-collapse-toggle{display:none}
   .sidebar-close{display:grid}
