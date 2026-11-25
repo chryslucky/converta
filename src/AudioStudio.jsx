@@ -4,8 +4,10 @@ import RecentMediaShelf from './RecentMediaShelf.jsx';
 import { detectVideoExportFormats, renderLyricVideoFile } from './lyric-video-export.js';
 import {
   Activity, AudioLines, AudioWaveform, Check, ChevronDown, CircleHelp, Clapperboard,
-  Download, FileAudio2, Film, Headphones, ImagePlus, Layers, Mic, Pause, Play, Plus,
-  Radio, RotateCcw, Scissors, SlidersHorizontal, Sparkles, Trash2, Upload, Video, WandSparkles, X
+  ChevronLeft, ChevronRight, Download, FileAudio2, Film, Headphones, ImagePlus,
+  Keyboard, Layers, Maximize2, Mic, Pause, Play, Plus, Radio, Repeat, RotateCcw,
+  Scissors, SkipBack, SkipForward, SlidersHorizontal, Sparkles, Trash2, Upload,
+  Video, Volume2, VolumeX, WandSparkles, X
 } from 'lucide-react';
 import {
   audioBufferToWav, decodeAudioFile, joinAudioBuffers, mixAudioBuffers,
@@ -16,6 +18,13 @@ import './audio-studio.css';
 const id = () => globalThis.crypto?.randomUUID?.() || String(Date.now()) + Math.random().toString(16).slice(2);
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const seconds = (value) => Number.isFinite(value) ? value.toFixed(2) + ' s' : '—';
+const frameTime = (value) => {
+  const frame = Math.max(0, Math.floor((Number(value) || 0) * 30));
+  const minutes = Math.floor(frame / 1800);
+  const wholeSeconds = Math.floor((frame % 1800) / 30);
+  const frames = frame % 30;
+  return [minutes, wholeSeconds, frames].map((part) => String(part).padStart(2, '0')).join(':');
+};
 const VOICES = [
   ['Natural',{}],['Adult man · deep',{pitch:-4,bass:5,treble:-2}],['Adult man · bright',{pitch:-2,bass:2,treble:4}],
   ['Child · playful',{pitch:5,speed:1.03,treble:3}],['Teen · light',{pitch:2,treble:2}],['Robot · classic',{pitch:-1,robot:0.9,distortion:12}],
@@ -256,6 +265,13 @@ export default function AudioStudio() {
   const [lines,setLines]=useState([]);
   const [design,setDesign]=useState({font:'Arial',fontSize:58,color:'#ffffff',gradientIndex:0,backgroundIndex:0,animationIndex:0,useGradient:true,shadow:true,outline:false,position:'center',backgroundImage:-1});
   const [currentTime,setCurrentTime]=useState(0);
+  const [previewDuration,setPreviewDuration]=useState(0);
+  const [previewPlaying,setPreviewPlaying]=useState(false);
+  const [previewRate,setPreviewRate]=useState(1);
+  const [previewVolume,setPreviewVolume]=useState(0.85);
+  const [previewMuted,setPreviewMuted]=useState(false);
+  const [previewLoop,setPreviewLoop]=useState(false);
+  const [previewSegmentEnd,setPreviewSegmentEnd]=useState(null);
   const [videoBusy,setVideoBusy]=useState(false);
   const [videoBlob,setVideoBlob]=useState(null);
   const [videoURL,setVideoURL]=useState('');
@@ -268,6 +284,8 @@ export default function AudioStudio() {
   const [renderProgress,setRenderProgress]=useState(0);
   const [renderProgressLabel,setRenderProgressLabel]=useState('');
   const videoCanvasRef=useRef(null);
+  const lyricsAudioRef=useRef(null);
+  const lyricsPreviewRef=useRef(null);
   const imageObjectsRef=useRef([]);
   const [imageVersion,setImageVersion]=useState(0);
 
@@ -301,6 +319,26 @@ export default function AudioStudio() {
     return ()=>URL.revokeObjectURL(url);
   },[videoBlob]);
   useEffect(()=>{
+    const audio=lyricsAudioRef.current;
+    if (!audio) return;
+    audio.volume=previewVolume;
+    audio.muted=previewMuted;
+    audio.playbackRate=previewRate;
+    audio.loop=previewLoop;
+  },[previewVolume,previewMuted,previewRate,previewLoop,lyricsAudioURL]);
+
+  useEffect(()=>{
+    const audio=lyricsAudioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime=0;
+    setPreviewPlaying(false);
+    setPreviewDuration(0);
+    setCurrentTime(0);
+    setPreviewSegmentEnd(null);
+  },[lyricsAudioURL]);
+
+  useEffect(()=>{
     const loaded=images.map((image)=>({file:image,url:URL.createObjectURL(image)}));
     imageObjectsRef.current=loaded.map((item)=>({file:item.file,url:item.url,image:null}));
     loaded.forEach((item,index)=>{
@@ -314,16 +352,121 @@ export default function AudioStudio() {
   const activeLyric=useMemo(()=>lines.find((line)=>currentTime>=line.start&&currentTime<=line.end),[lines,currentTime]);
   const previewCanvas=videoCanvasRef.current;
   useEffect(()=>{
-    if (!previewCanvas) return;
+    if (!previewCanvas || previewPlaying) return;
     const ctx=previewCanvas.getContext('2d');
     if (!ctx) return;
     drawLyricFrame(ctx,1280,720,currentTime,lines,design,imageObjectsRef.current);
-  },[previewCanvas,currentTime,lines,design,images,imageVersion]);
+  },[previewCanvas,currentTime,lines,design,images,imageVersion,previewPlaying]);
 
+  useEffect(()=>{
+    if (!previewPlaying) return;
+    let frameId=0;
+    let lastPaint=0;
+    let lastReadout=0;
+    const audio=lyricsAudioRef.current;
+    const canvas=videoCanvasRef.current;
+    const ctx=canvas?.getContext('2d');
+    if (!audio || !ctx) return;
+    const tick=(timestamp)=>{
+      if (audio.paused) return;
+      const time=audio.currentTime||0;
+      if (previewSegmentEnd!=null && time>=previewSegmentEnd) {
+        audio.pause();
+        audio.currentTime=previewSegmentEnd;
+        setCurrentTime(previewSegmentEnd);
+        setPreviewSegmentEnd(null);
+        return;
+      }
+      if (timestamp-lastPaint>=1000/30) {
+        drawLyricFrame(ctx,1280,720,time,lines,design,imageObjectsRef.current);
+        lastPaint=timestamp;
+      }
+      if (timestamp-lastReadout>=100) {
+        setCurrentTime(time);
+        lastReadout=timestamp;
+      }
+      frameId=requestAnimationFrame(tick);
+    };
+    frameId=requestAnimationFrame(tick);
+    return ()=>cancelAnimationFrame(frameId);
+  },[previewPlaying,previewSegmentEnd,lines,design,imageVersion]);
+
+  useEffect(()=>{
+    if (tab!=='lyrics') return;
+    const onKeyDown=(event)=>{
+      const target=event.target;
+      const tag=target?.tagName||'';
+      if (target?.isContentEditable || ['INPUT','TEXTAREA','SELECT','BUTTON'].includes(tag)) return;
+      if (event.code==='Space') {
+        event.preventDefault();
+        togglePreviewPlayback();
+      } else if (event.key==='ArrowLeft' || event.key==='ArrowRight') {
+        event.preventDefault();
+        const delta=(event.shiftKey?5:1/30)*(event.key==='ArrowLeft'?-1:1);
+        const audio=lyricsAudioRef.current;
+        audio?.pause();
+        seekPreview((audio?.currentTime??currentTime)+delta);
+      } else if (event.key==='Home') {
+        event.preventDefault();
+        lyricsAudioRef.current?.pause();
+        seekPreview(0);
+      } else if (event.key==='End' && previewDuration>0) {
+        event.preventDefault();
+        lyricsAudioRef.current?.pause();
+        seekPreview(previewDuration);
+      }
+    };
+    window.addEventListener('keydown',onKeyDown);
+    return ()=>window.removeEventListener('keydown',onKeyDown);
+  },[tab,currentTime,previewDuration,lyricsAudioURL]);
+
+  function seekPreview(nextTime) {
+    const audio=lyricsAudioRef.current;
+    const duration=Number.isFinite(audio?.duration)?audio.duration:previewDuration;
+    const next=clamp(Number(nextTime)||0,0,Math.max(0,duration));
+    if (audio && Number.isFinite(audio.duration)) audio.currentTime=next;
+    setCurrentTime(next);
+    setPreviewSegmentEnd(null);
+  }
+  function togglePreviewPlayback() {
+    const audio=lyricsAudioRef.current;
+    if (!audio || !lyricsAudioURL) return;
+    if (audio.paused) {
+      setPreviewSegmentEnd(null);
+      audio.play().catch(()=>setError('The soundtrack could not be played. Try selecting the audio file again.'));
+    } else audio.pause();
+  }
+  function stepPreviewFrame(direction) {
+    const audio=lyricsAudioRef.current;
+    audio?.pause();
+    seekPreview((audio?.currentTime??currentTime)+(direction/30));
+  }
+  function previewSegment(line) {
+    const audio=lyricsAudioRef.current;
+    seekPreview(line.start);
+    setPreviewSegmentEnd(line.end);
+    if (audio && lyricsAudioURL) audio.play().catch(()=>setError('The selected lyric segment could not be played.'));
+  }
+  function setLyricBoundary(line,boundary) {
+    const duration=previewDuration||Number.MAX_SAFE_INTEGER;
+    const value=clamp(currentTime,0,duration);
+    if (boundary==='start') updateLine(line.id,{start:Math.min(value,Math.max(0,line.end-0.01))});
+    else updateLine(line.id,{end:Math.max(line.start+0.01,value)});
+  }
+  function togglePreviewFullscreen() {
+    const panel=lyricsPreviewRef.current;
+    if (!panel) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(()=>setError('Could not exit full-screen preview.'));
+    } else {
+      panel.requestFullscreen?.().catch(()=>setError('Full-screen preview is not available in this browser.'));
+    }
+  }
   function importLyricsAudio(file) {
     if (!file) return;
     if (!(file.type||'').startsWith('audio/') && !/\.(mp3|wav|m4a|aac|ogg|flac|webm)$/i.test(file.name)) { setError('Choose an audio file for the lyrics video.'); return; }
-    setLyricsFile(file); setCurrentTime(0); setLines([]);
+    lyricsAudioRef.current?.pause();
+    setLyricsFile(file); setCurrentTime(0); setPreviewDuration(0); setPreviewPlaying(false); setPreviewSegmentEnd(null); setLines([]);
     setVideoBlob(null);
   }
   function importImages(fileList) {
@@ -495,22 +638,72 @@ export default function AudioStudio() {
         <div className="audio-panel lyrics-source-panel">
           <div className="audio-panel-heading"><div><small>01 · SOUNDTRACK</small><h2>Choose your song</h2></div><AudioLines/></div>
           <label className="audio-upload-button"><Upload/><span>{lyricsFile?lyricsFile.name:'Upload song or audio file'}</span><input type="file" accept="audio/*,.flac,.m4a,.webm" onChange={(e)=>importLyricsAudio(e.target.files?.[0])}/></label>
+          <audio
+            ref={lyricsAudioRef}
+            className="lyrics-audio-element"
+            src={lyricsAudioURL||undefined}
+            preload="metadata"
+            onLoadedMetadata={(event)=>setPreviewDuration(Number.isFinite(event.currentTarget.duration)?event.currentTarget.duration:0)}
+            onDurationChange={(event)=>setPreviewDuration(Number.isFinite(event.currentTarget.duration)?event.currentTarget.duration:0)}
+            onTimeUpdate={(event)=>setCurrentTime(event.currentTarget.currentTime||0)}
+            onPlay={()=>setPreviewPlaying(true)}
+            onPause={()=>setPreviewPlaying(false)}
+            onEnded={(event)=>{setCurrentTime(event.currentTarget.duration||0);setPreviewPlaying(false);setPreviewSegmentEnd(null);}}
+          />
           <RecentMediaShelf
             title="Reuse a converted soundtrack"
             actionLabel="Use soundtrack"
             onImport={(file)=>importLyricsAudio(file)}
             limit={4}
           />
-          {lyricsAudioURL&&<AudioPlayerModal src={lyricsAudioURL} title={lyricsFile?.name||'Song soundtrack'} subtitle="LYRIC VIDEO SOUNDTRACK" buttonLabel="Open song player" onTimeUpdate={setCurrentTime}/>} 
-          <div className="lyrics-time-display"><span>PLAYHEAD</span><b>{seconds(currentTime)}</b></div>
+          {lyricsAudioURL&&<div className="lyrics-soundtrack-status"><span><Volume2/></span><div><b>Soundtrack connected to preview</b><small>Play, pause and seek from the video preview controls</small></div></div>}
+          <div className="lyrics-time-display"><span>PLAYHEAD · MM:SS:FF</span><b>{frameTime(currentTime)}</b></div>
           <div className="lyrics-images-header"><div><b>Background image library</b><small>Upload up to 10 still images</small></div><label className="image-add-button"><ImagePlus/><input type="file" accept="image/*" multiple onChange={(e)=>{importImages(e.target.files);e.target.value='';}}/> Add images</label></div>
           <div className="lyrics-image-grid">{images.map((image,index)=><div key={index}><span>{String(index+1).padStart(2,'0')}</span><b>{image.name}</b><button onClick={()=>setImages((old)=>old.filter((_,i)=>i!==index))} aria-label="Remove image"><X/></button></div>)}
             {!images.length&&<p>Optional: add up to ten photos for your lyric video background.</p>}</div>
         </div>
-        <div className="audio-panel lyrics-preview-panel">
-          <div className="audio-panel-heading"><div><small>02 · LIVE CANVAS PREVIEW</small><h2>Video composition</h2></div><span className="preview-live-dot">LIVE PREVIEW</span></div>
-          <canvas ref={videoCanvasRef} width="1280" height="720" className="lyrics-preview-canvas"/>
-          <div className="lyrics-preview-foot"><span>{activeLyric?.text||'No lyric at this time'}</span><span>{seconds(currentTime)}</span></div>
+        <div className="audio-panel lyrics-preview-panel" ref={lyricsPreviewRef}>
+          <div className="audio-panel-heading"><div><small>02 · LIVE CANVAS PREVIEW</small><h2>Video composition</h2></div><span className="preview-live-dot">{previewPlaying?'PLAYING · LIVE':'LIVE PREVIEW'}</span></div>
+          <div className="lyrics-preview-stage">
+            <canvas ref={videoCanvasRef} width="1280" height="720" className="lyrics-preview-canvas"/>
+            <button type="button" className="lyrics-preview-fullscreen" onClick={togglePreviewFullscreen} title="Full-screen preview" aria-label="Full-screen preview"><Maximize2/></button>
+          </div>
+          <div className="lyrics-transport" role="group" aria-label="Video preview controls">
+            <div className="lyrics-transport-main">
+              <div className="lyrics-transport-actions">
+                <button type="button" className="lyrics-transport-jump" onClick={()=>seekPreview(currentTime-5)} disabled={!lyricsAudioURL} aria-label="Back five seconds" title="Back five seconds"><SkipBack/><span>5s</span></button>
+                <button type="button" className="lyrics-transport-frame" onClick={()=>stepPreviewFrame(-1)} disabled={!lyricsAudioURL} aria-label="Previous frame" title="Previous frame · 1/30 second"><ChevronLeft/></button>
+                <button type="button" className="lyrics-transport-play" onClick={togglePreviewPlayback} disabled={!lyricsAudioURL} aria-label={previewPlaying?'Pause preview':'Play preview'} title={previewPlaying?'Pause preview':'Play preview'}>{previewPlaying?<Pause fill="currentColor"/>:<Play fill="currentColor"/>}</button>
+                <button type="button" className="lyrics-transport-frame" onClick={()=>stepPreviewFrame(1)} disabled={!lyricsAudioURL} aria-label="Next frame" title="Next frame · 1/30 second"><ChevronRight/></button>
+                <button type="button" className="lyrics-transport-jump" onClick={()=>seekPreview(currentTime+5)} disabled={!lyricsAudioURL} aria-label="Forward five seconds" title="Forward five seconds"><SkipForward/><span>5s</span></button>
+              </div>
+              <div className="lyrics-transport-readout"><b>{frameTime(currentTime)}</b><span>/</span><span>{frameTime(previewDuration)}</span></div>
+              <button type="button" className={'lyrics-loop-toggle '+(previewLoop?'active':'')} onClick={()=>setPreviewLoop((value)=>!value)} disabled={!lyricsAudioURL} aria-label={previewLoop?'Disable loop':'Enable loop'} aria-pressed={previewLoop} title="Loop soundtrack"><Repeat/></button>
+              <label className="lyrics-rate-control"><span>Speed</span><select value={previewRate} onChange={(event)=>setPreviewRate(Number(event.target.value))} disabled={!lyricsAudioURL} aria-label="Preview playback speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
+            </div>
+            <div className="lyrics-transport-seek">
+              <input
+                type="range"
+                min="0"
+                max={Math.max(previewDuration,0.01)}
+                step={1/30}
+                value={clamp(currentTime,0,Math.max(previewDuration,0.01))}
+                onChange={(event)=>seekPreview(Number(event.target.value))}
+                disabled={!lyricsAudioURL||!previewDuration}
+                aria-label="Seek video preview timeline"
+                style={{'--seek-progress':(previewDuration?clamp(currentTime/previewDuration,0,1)*100:0)+'%'}}
+              />
+            </div>
+            <div className="lyrics-transport-footer">
+              <div className="lyrics-volume-control">
+                <button type="button" onClick={()=>setPreviewMuted((value)=>!value)} disabled={!lyricsAudioURL} aria-label={previewMuted?'Unmute soundtrack':'Mute soundtrack'} title={previewMuted?'Unmute soundtrack':'Mute soundtrack'}>{previewMuted||previewVolume===0?<VolumeX/>:<Volume2/>}</button>
+                <input type="range" min="0" max="1" step="0.01" value={previewVolume} onChange={(event)=>setPreviewVolume(Number(event.target.value))} disabled={!lyricsAudioURL||previewMuted} aria-label="Soundtrack volume"/>
+                <span>{previewMuted?'Muted':Math.round(previewVolume*100)+'%'}</span>
+              </div>
+              <span className="lyrics-frame-hint"><Keyboard/> Space play/pause · ←/→ frame · Shift + ←/→ 5 s</span>
+            </div>
+          </div>
+          <div className="lyrics-preview-foot"><span>{activeLyric?.text||'No lyric at this time'}</span><span>{frameTime(currentTime)}</span></div>
         </div>
       </div>
 
@@ -519,9 +712,10 @@ export default function AudioStudio() {
           <div className="audio-panel-heading"><div><small>03 · SECOND-BY-SECOND CAPTIONS</small><h2>Lyrics timeline</h2></div><button className="audio-secondary-action" onClick={addLyricLine} disabled={!lyricsFile}><Plus/> Add line</button></div>
           <p className="audio-panel-intro">Each caption has its own start and end time. Use the audio player to find the exact moment, then adjust the timing in seconds.</p>
           {lines.map((line,index)=><article className="lyric-line-card" key={line.id}>
-            <div className="lyric-line-title"><span>{String(index+1).padStart(2,'0')}</span><b>Lyric segment</b><button onClick={()=>removeLine(line.id)} aria-label="Delete lyric segment"><Trash2/></button></div>
+            <div className="lyric-line-title"><span>{String(index+1).padStart(2,'0')}</span><b>Lyric segment</b><button type="button" className="lyric-preview-segment" onClick={()=>previewSegment(line)} disabled={!lyricsAudioURL} title="Play this caption from its start"><Play/><span>Preview</span></button><button onClick={()=>removeLine(line.id)} aria-label="Delete lyric segment"><Trash2/></button></div>
             <textarea value={line.text} onChange={(e)=>updateLine(line.id,{text:e.target.value})} rows="2" placeholder="Type lyric text here"/>
             <div className="lyric-time-fields"><label>Start (s)<input type="number" min="0" step="0.01" value={line.start} onChange={(e)=>updateLine(line.id,{start:Number(e.target.value)})}/></label><label>End (s)<input type="number" min="0" step="0.01" value={line.end} onChange={(e)=>updateLine(line.id,{end:Number(e.target.value)})}/></label><label>Background image<select value={line.backgroundImage??-1} onChange={(e)=>updateLine(line.id,{backgroundImage:Number(e.target.value)})}><option value={-1}>Animated</option>{images.map((image,imageIndex)=><option value={imageIndex} key={imageIndex}>{image.name}</option>)}</select></label></div>
+            <div className="lyric-review-actions"><button type="button" onClick={()=>setLyricBoundary(line,'start')} disabled={!lyricsAudioURL}>Set start to playhead</button><button type="button" onClick={()=>setLyricBoundary(line,'end')} disabled={!lyricsAudioURL}>Set end to playhead</button></div>
             <label className="lyrics-field-label">Text animation<select value={line.animationIndex??design.animationIndex} onChange={(e)=>updateLine(line.id,{animationIndex:Number(e.target.value)})}>{ANIMATIONS.map((animation)=><option value={animation.index} key={animation.index}>{String(animation.index+1).padStart(3,'0')} · {animation.name}</option>)}</select></label>
           </article>)}
           {!lines.length&&<div className="audio-empty compact"><Clapperboard/><b>No lyric captions yet</b><span>Upload a song and add timed text segments.</span></div>}
