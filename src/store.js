@@ -6,7 +6,7 @@ const makeId = () => globalThis.crypto?.randomUUID?.() || String(Date.now()) + M
 
 export const useStudio = create(persist((set) => ({
   files: [],
-  format: 'mp3',
+  format: 'flac',
   bitrate: '192k',
   sampleRate: 'source',
   history: [],
@@ -41,7 +41,7 @@ export const useStudio = create(persist((set) => ({
   clearActivity: () => set({ activity: [] })
 }), {
   name: 'converta-studio-v4',
-  version: 4,
+  version: 5,
   storage: createJSONStorage(() => localStorage),
   partialize: (state) => ({
     format: state.format,
@@ -50,8 +50,9 @@ export const useStudio = create(persist((set) => ({
     history: state.history,
     activity: state.activity
   }),
-  migrate: (persisted) => ({
+  migrate: (persisted, version) => ({
     ...persisted,
+    format: version < 5 ? 'flac' : (persisted.format || 'flac'),
     files: [],
     activity: Array.isArray(persisted.activity) ? persisted.activity : [],
     history: Array.isArray(persisted.history) ? persisted.history.map((item) => ({
