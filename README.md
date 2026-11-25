@@ -10,7 +10,7 @@ Converta is a browser-based media workspace for audio conversion, sound editing,
 - Convert audio and extract audio tracks from supported video containers to MP3, WAV, FLAC, AAC and OGG.
 - Play completed conversion outputs in the queue and history, and download the saved file.
 - Edit audio locally: trim, remove a range, split, duplicate, reverse, concatenate, overlay-mix, fade, normalize, remove quiet sections, adjust gain, change playback rate and pitch, EQ bass/treble, high-pass and low-pass filter, compress, distort, and add echo, reverb and chorus.
-- Apply 32 creative voice-processing profiles, including lower and brighter adult presets, child-like pitch, robot, radio, telephone, announcer, monster, alien and other effects.
+- Apply 33 creative voice-processing profiles, including lower and brighter adult presets, child-like pitch, robot, radio, telephone, announcer, monster, alien and other effects.
 - Import or record voiceovers, set each track's start offset and level, and mix tracks with a selected audio source.
 - Create lyric videos from songs with individually timed caption segments, 32 font-family choices, solid text color or animated linear gradients, 30 animated background presets, up to 10 uploaded image backgrounds and 120 parameterized text-animation presets.
 - Preview edited audio in an audio player and lyric videos in a video player before download.
