@@ -422,9 +422,12 @@ export default function AudioStudio() {
 
   function seekPreview(nextTime) {
     const audio=lyricsAudioRef.current;
-    const duration=Number.isFinite(audio?.duration)?audio.duration:previewDuration;
-    const next=clamp(Number(nextTime)||0,0,Math.max(0,duration));
-    if (audio && Number.isFinite(audio.duration)) audio.currentTime=next;
+    const duration=Number.isFinite(audio?.duration)&&audio.duration>0?audio.duration:previewDuration;
+    const requested=Math.max(0,Number(nextTime)||0);
+    const next=duration>0?clamp(requested,0,duration):requested;
+    if (audio && lyricsAudioURL) {
+      try { audio.currentTime=next; } catch { /* Metadata may still be loading; the audio element will catch up once it is ready. */ }
+    }
     setCurrentTime(next);
     setPreviewSegmentEnd(null);
   }
@@ -443,8 +446,10 @@ export default function AudioStudio() {
   }
   function previewSegment(line) {
     const audio=lyricsAudioRef.current;
-    seekPreview(line.start);
-    setPreviewSegmentEnd(line.end);
+    const start=Math.max(0,Number(line.start)||0);
+    const end=Math.max(start+0.01,Number(line.end)||start+0.01);
+    seekPreview(start);
+    setPreviewSegmentEnd(end);
     if (audio && lyricsAudioURL) audio.play().catch(()=>setError('The selected lyric segment could not be played.'));
   }
   function setLyricBoundary(line,boundary) {
@@ -457,9 +462,11 @@ export default function AudioStudio() {
     const panel=lyricsPreviewRef.current;
     if (!panel) return;
     if (document.fullscreenElement) {
-      document.exitFullscreen?.().catch(()=>setError('Could not exit full-screen preview.'));
+      const exitPromise=document.exitFullscreen?.();
+      exitPromise?.catch(()=>setError('Could not exit full-screen preview.'));
     } else {
-      panel.requestFullscreen?.().catch(()=>setError('Full-screen preview is not available in this browser.'));
+      const enterPromise=panel.requestFullscreen?.();
+      enterPromise?.catch(()=>setError('Full-screen preview is not available in this browser.'));
     }
   }
   function importLyricsAudio(file) {
@@ -710,7 +717,7 @@ export default function AudioStudio() {
       <div className="lyrics-edit-grid">
         <section className="audio-panel lyrics-lines-panel">
           <div className="audio-panel-heading"><div><small>03 · SECOND-BY-SECOND CAPTIONS</small><h2>Lyrics timeline</h2></div><button className="audio-secondary-action" onClick={addLyricLine} disabled={!lyricsFile}><Plus/> Add line</button></div>
-          <p className="audio-panel-intro">Each caption has its own start and end time. Use the audio player to find the exact moment, then adjust the timing in seconds.</p>
+          <p className="audio-panel-intro">Each caption has its own start and end time. Use the video preview transport to find a frame, then set either caption boundary directly from the playhead.</p>
           {lines.map((line,index)=><article className="lyric-line-card" key={line.id}>
             <div className="lyric-line-title"><span>{String(index+1).padStart(2,'0')}</span><b>Lyric segment</b><button type="button" className="lyric-preview-segment" onClick={()=>previewSegment(line)} disabled={!lyricsAudioURL} title="Play this caption from its start"><Play/><span>Preview</span></button><button onClick={()=>removeLine(line.id)} aria-label="Delete lyric segment"><Trash2/></button></div>
             <textarea value={line.text} onChange={(e)=>updateLine(line.id,{text:e.target.value})} rows="2" placeholder="Type lyric text here"/>
