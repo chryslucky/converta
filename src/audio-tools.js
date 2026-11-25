@@ -31,8 +31,8 @@ export function sliceAudioBuffer(buffer, start = 0, end = buffer.duration) {
 export function joinAudioBuffers(buffers) {
   const valid = buffers.filter(Boolean);
   if (!valid.length) throw new Error('Add at least one audio clip.');
-  const rate = valid[0].sampleRate;
-  const channels = Math.min(2, Math.max(...valid.map((buffer) => buffer.numberOfChannels)));
+  const rate = Math.max(...valid.map((buffer) => buffer.sampleRate));
+  const channels = Math.max(1, ...valid.map((buffer) => buffer.numberOfChannels));
   const total = valid.reduce((sum, buffer) => sum + Math.ceil(buffer.duration * rate), 0);
   const context = createContext();
   const output = context.createBuffer(channels, total, rate);
@@ -188,7 +188,7 @@ export async function processAudioBuffer(input, settings = {}) {
   const speed = clamp(Number(settings.speed || 1) * Number(preset.speed || 1), 0.5, 2);
   const playbackRate = clamp(speed * Math.pow(2, pitch / 12), 0.5, 2);
   const durationOut = Math.max(0.1, buffer.duration / playbackRate);
-  const channels = Math.max(1, Math.min(2, buffer.numberOfChannels));
+  const channels = buffer.numberOfChannels;
   const frames = Math.ceil(durationOut * buffer.sampleRate);
   const offline = new OfflineAudioContext(channels, frames, buffer.sampleRate);
   const source = offline.createBufferSource();
@@ -221,14 +221,16 @@ export async function processAudioBuffer(input, settings = {}) {
     node.connect(shaper);
     node = shaper;
   }
-  const compressor = offline.createDynamicsCompressor();
-  compressor.threshold.value = settings.compress === false ? 0 : -20;
-  compressor.knee.value = 20;
-  compressor.ratio.value = settings.compress === false ? 1 : 3;
-  compressor.attack.value = 0.004;
-  compressor.release.value = 0.2;
-  node.connect(compressor);
-  node = compressor;
+  if (settings.compress !== false) {
+    const compressor = offline.createDynamicsCompressor();
+    compressor.threshold.value = -20;
+    compressor.knee.value = 20;
+    compressor.ratio.value = 3;
+    compressor.attack.value = 0.004;
+    compressor.release.value = 0.2;
+    node.connect(compressor);
+    node = compressor;
+  }
 
   const output = offline.createGain();
   const gainValue = clamp(Number(settings.gain ?? 100), 0, 200) / 100;
@@ -297,7 +299,7 @@ export async function mixAudioBuffers(tracks) {
   const active = tracks.filter((track) => track && track.buffer);
   if (!active.length) throw new Error('Add an audio track before mixing.');
   const sampleRate = active[0].buffer.sampleRate;
-  const channels = Math.max(1, Math.min(2, Math.max(...active.map((track) => track.buffer.numberOfChannels))));
+  const channels = Math.max(1, ...active.map((track) => track.buffer.numberOfChannels));
   const duration = Math.max(...active.map((track) => Math.max(0, Number(track.offset) || 0) + track.buffer.duration));
   const offline = new OfflineAudioContext(channels, Math.ceil(duration * sampleRate), sampleRate);
   for (const track of active) {
@@ -318,35 +320,40 @@ export async function mixAudioBuffers(tracks) {
 }
 
 export function audioBufferToWav(buffer) {
-  const channels = Math.min(2, buffer.numberOfChannels);
-  const length = buffer.length;
-  const bytesPerSample = 2;
-  const dataSize = length * channels * bytesPerSample;
+  if (!buffer || !Number.isInteger(buffer.numberOfChannels) || !buffer.length) {
+    throw new Error('A valid audio buffer is required for WAV export.');
+  }
+  const channels = buffer.numberOfChannels;
+  const bytesPerSample = 4;
+  const bitsPerSample = 32;
+  const dataSize = buffer.length * channels * bytesPerSample;
+  if (!Number.isSafeInteger(dataSize) || dataSize + 44 > 0xffffffff) {
+    throw new Error('The audio export is too large for a standard WAV container.');
+  }
   const arrayBuffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(arrayBuffer);
-  const writeString = (offset, value) => {
-    for (let i = 0; i < value.length; i += 1) view.setUint8(offset + i, value.charCodeAt(i));
+  const writeString = (offset, text) => {
+    for (let i = 0; i < text.length; i += 1) view.setUint8(offset + i, text.charCodeAt(i));
   };
   writeString(0, 'RIFF');
   view.setUint32(4, 36 + dataSize, true);
   writeString(8, 'WAVE');
   writeString(12, 'fmt ');
   view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
+  view.setUint16(20, 3, true);
   view.setUint16(22, channels, true);
   view.setUint32(24, buffer.sampleRate, true);
   view.setUint32(28, buffer.sampleRate * channels * bytesPerSample, true);
   view.setUint16(32, channels * bytesPerSample, true);
-  view.setUint16(34, 16, true);
+  view.setUint16(34, bitsPerSample, true);
   writeString(36, 'data');
   view.setUint32(40, dataSize, true);
-  let offset = 44;
   const channelData = Array.from({ length: channels }, (_, index) => buffer.getChannelData(index));
-  for (let i = 0; i < length; i += 1) {
+  let offset = 44;
+  for (let frame = 0; frame < buffer.length; frame += 1) {
     for (let channel = 0; channel < channels; channel += 1) {
-      const sample = clamp(channelData[channel][i], -1, 1);
-      view.setInt16(offset, sample < 0 ? sample * 32768 : sample * 32767, true);
-      offset += 2;
+      view.setFloat32(offset, channelData[channel][frame], true);
+      offset += bytesPerSample;
     }
   }
   return new Blob([arrayBuffer], { type: 'audio/wav' });
