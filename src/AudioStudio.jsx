@@ -390,7 +390,7 @@ export default function AudioStudio() {
         {sourceLoading&&<div className="audio-loading"><span/> Decoding source audio…</div>}
         {!sourceBuffer&&!sourceLoading&&<div className="audio-empty large"><AudioLines/><b>Choose an audio clip</b><span>Upload a source in the library to open its editing controls.</span></div>}
         {sourceBuffer&&<>
-          <div className="audio-waveform"><div className="waveform-bars">{Array.from({length:76},(_,i)=><i key={i} style={{height:(16+Math.abs(Math.sin(i*12.9898)*Math.cos(i*2.443))*82)+'%'} />)}</div><div className="waveform-labels"><span>00:00</span><b>{seconds(activeDuration)}</b></div></div>
+          <div className="audio-waveform"><div className="waveform-bars">{Array.from({length:76},(_,i)=><i key={i} style={{height:(16+Math.abs(Math.sin(i*12.9898)*Math.cos(i*2.443))*82)+'%'}} />)}</div><div className="waveform-labels"><span>00:00</span><b>{seconds(activeDuration)}</b></div></div>
           <div className="audio-dual-fields"><label>Trim start (seconds)<input type="number" min="0" max={activeDuration} step="0.05" value={settings.trimStart} onChange={(e)=>patchSettings({trimStart:Number(e.target.value)})}/></label><label>Trim end (seconds)<input type="number" min="0" max={activeDuration} step="0.05" value={settings.trimEnd} onChange={(e)=>patchSettings({trimEnd:Number(e.target.value)})}/></label></div>
           <div className="audio-tool-grid">
             <label>Cut from (s)<input type="number" min="0" step="0.05" value={settings.cutStart??''} placeholder="Start" onChange={(e)=>patchSettings({cutStart:e.target.value===''?null:Number(e.target.value)})}/></label>
