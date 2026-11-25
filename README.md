@@ -18,9 +18,9 @@ Converta is a browser-based media workspace for audio conversion, sound editing,
 
 ## Processing model and limits
 
-FFmpeg WebAssembly performs the primary format conversions inside the browser. Audio Studio uses Web Audio API decoding, offline processing and WAV encoding; lyric videos are recorded from a canvas and soundtrack with the browser's MediaRecorder API.
+FFmpeg WebAssembly performs the primary audio conversions inside the browser. Audio Studio uses the Web Audio API for editing and WAV export. Lyric videos are rendered frame-by-frame from the composition canvas and muxed with the soundtrack by Mediabunny using WebCodecs.
 
-Audio Studio's voice presets are creative DSP effects, not neural voice cloning or natural gender conversion. Pitch changes currently use playback-rate processing, so they also change duration. Audio Studio edited-audio exports are PCM WAV. Lyric video output is WebM where supported, or MP4 only when the browser exposes a compatible MediaRecorder implementation. Current browser codec support may vary.
+Audio Studio's voice presets are creative DSP effects, not neural voice cloning or natural gender conversion. Pitch changes currently use playback-rate processing, so they also change duration. Edited-audio exports are PCM WAV. Lyric video export defaults to MP4 (H.264 + AAC) when compatible encoders are available, and offers MOV, WebM, MKV and MPEG-TS based on device/browser codec support. AAC encoding is supplied by the open-source Mediabunny AAC encoder extension when native WebCodecs AAC is unavailable. If MP4/H.264 is not supported, the editor selects the first compatible alternative.
 
 No media-upload or server-side conversion API is included. Your source files remain in the browser. Export blobs and history are stored locally; browser cleanup, private-browsing policies or storage quota limits can remove them. Download important work to your device. Keep the tab active while a lyric video renders.
 
@@ -44,6 +44,7 @@ The build copies the FFmpeg WebAssembly runtime, generates the search index, cre
 
 - `src/App.jsx` — conversion workspace, history, routing and SEO metadata
 - `src/AudioStudio.jsx` — audio editor, voice lab, voiceovers and lyric-video UI
+- `src/lyric-video-export.js` — Mediabunny container muxing, WebCodecs capability checks and MP4-first export
 - `src/audio-tools.js` — Web Audio decoding, processing, mixing and WAV export
 - `src/audio-studio.css` — responsive Audio Studio design system
 - `src/conversion.js` and `src/engine.js` — FFmpeg output profiles and conversion lifecycle

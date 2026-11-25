@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import AudioPlayerModal from './AudioPlayerModal.jsx';
 import AudioStudio from './AudioStudio.jsx';
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -64,7 +65,7 @@ function StoredOutputPreview({ resultId, outputName }) {
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   },[resultId]);
   return <div className="queue-preview-wrap">
-    {url ? <audio className="queue-audio-preview" controls preload="none" src={url} aria-label={'Play '+outputName} /> : <small>{status}</small>}
+    {url ? <AudioPlayerModal src={url} title={outputName} subtitle="CONVERSION OUTPUT" buttonLabel="Play converted audio" /> : <small>{status}</small>}
   </div>;
 }
 function record(action, detail = {}) {
